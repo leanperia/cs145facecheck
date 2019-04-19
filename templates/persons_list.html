@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %} Registered Persons {% endblock title %}
+{% block content %}
+
+<a href="{% url 'add_person' %}"> Register a new person. </a>
+
+<h2> List of registered persons in database </h2>
+<br><br>
+
+<table>
+    <tr>
+        <th> First Name </th>
+        <th> Last Name </th>
+        <th> Is an enrolled UP student </th>
+        <th> Is currently a faculty member </th>
+        <th> Student/Faculty number </th>
+        <th> Degree program </th>
+        <th> No. of sample photos </th>
+        <th> Link to profile </th>
+    <tr>
+{% for item in targetlist %}
+    <tr>
+        <td> {{item.first_name}} </td>
+        <td> {{item.last_name}} </td>
+        <td> {{item.is_enrstudent}} </td>
+        <td> {{item.is_faculty}} </td>
+        <td> {{item.studentnum}} </td>
+        <td> {{item.degreeprog}} </td>
+        <td> {{item.numphotos}} </td>
+        <td> <a href="{% url 'view_person' item.id %}"> View </a> </td>
+{% empty %}
+<tr> <td colspan="7"> None </td></tr>
+{% endfor %}
+</table>
+
+
+
+{% endblock %}

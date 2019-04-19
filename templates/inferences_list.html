@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %} Inference requests {% endblock title %}
+{% block content %}
+
+<h2> History of inference requests performed </h2>
+<br><br>
+
+<table>
+    <tr>
+        <th> End agent </th>
+        <th> Persons detected </th>
+        <th> Photo taken </th>
+        <th> Timestamp </th>
+        <th> Number of faces detected </th>
+        <th> FP count </th>
+        <th> FN count </th>
+    <tr>
+{% for item in targetlist %}
+    <tr>
+        <td> {{item.endagent.name}} </td>
+        <td>
+            {% for p in item.person %}
+                {{p.first_name}} {{p.last_name}},
+            {% endfor %}
+        </td>
+        <td> {{item.inference.url}} </td>
+        <td> {{item.timestamp}}
+        <td> {{item.inf_count}} </td>
+        <td> {{item.fp_count}} </td>
+        <td> {{item.fn_count}} </td>
+{% empty %}
+<tr> <td colspan="7"> None </td></tr>
+{% endfor %}
+</table>
+
+<br><br>
+<a href='{% url 'add_agent' %}'> Register a new end agent </a>
+
+{% endblock %}

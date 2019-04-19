@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %} Register a new agent{% endblock title %}
+
+{% block content %}
+<h2> Register a new end agent</h2>
+<br><br>
+Note: <b> This new end agent will be registered under you (the admin currently logged in). </b>
+<form method="post">
+  {% csrf_token %}
+  {{ form|crispy }}
+  <button class="btn btn-success" type="submit">Submit</button>
+</form>
+<br>
+
+{% endblock content %}
