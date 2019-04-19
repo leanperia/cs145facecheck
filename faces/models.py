@@ -2,6 +2,7 @@ import os
 from django.db import models
 from django.db.models import Model
 from django.contrib.auth.models import AbstractUser
+from facecheck import settings
 
 class CustomUser(AbstractUser):
     def __str__(self):

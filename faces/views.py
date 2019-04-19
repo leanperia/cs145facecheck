@@ -53,8 +53,28 @@ class AddSamplePhoto(LoginRequiredMixin, CreateView):
         return reverse('add_samplephoto', args=(self.kwargs['pk'],))
 
 
-class EditSamplePhotos(LoginRequiredMixin, ListView):
-    pass
+class EditSamplePhotos(LoginRequiredMixin, TemplateView):
+    template_name = 'sampphotos_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['person'] = RegisteredPerson.objects.get(pk=self.kwargs['pk'])
+        context['samplephotos'] = SamplePhoto.objects.filter(person_id=self.kwargs['pk'])
+        return context
+
+def DeleteSamplePhotos(request, pk):
+    deletelist = request.POST.getlist('photos')
+    if deletelist:
+        person = RegisteredPerson.objects.get(pk=pk)
+        for stringid in deletelist:
+            target = SamplePhoto.objects.get(pk=int(stringid))
+            target.photo.delete(save=True)
+            target.delete()
+            person.numphotos -= 1
+            person.save()
+    return HttpResponseRedirect(reverse('view_person', args=(pk,)))
+
+
 
 class ListAgents(LoginRequiredMixin, ListView):
     model = EndAgent
