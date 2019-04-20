@@ -1,0 +1,11 @@
+__pycache__
+
+migrations
+
+.ipynb
+
+*.jpg
+
+*.pth
+
+media/models

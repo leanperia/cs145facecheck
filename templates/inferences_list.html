@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %} Inference requests {% endblock title %}
+{% block content %}
+
+<h2> History of inference requests performed </h2>
+<br><br>
+
+<table>
+    <tr>
+        <th> End agent </th>
+        <th> Person detected </th>
+        <th> Timestamp </th>
+        <th> Face detected? </th>
+        <th> False positive? </th>
+        <th> False negative? </th>
+        <th> Too many faces? </th>
+        <th> View more </th>
+    <tr>
+{% for item in targetlist %}
+    <tr>
+        <td> {{item.endagent.name}} </td>
+        <td>{{item.person.first_name}} {{item.person.last_name}}</td>
+        <td> {{item.timestamp}} </td>
+        <td> {{item.face_detected}} </td>
+        <td> {{item.false_positive}} </td>
+        <td> {{item.false_negative}} </td>
+        <td> {{item.too_many_faces}} </td>
+        <td> <a href="{% url 'view_inference' item.id %}"> Link</a> </td>
+{% empty %}
+<tr> <td colspan="8"> None </td></tr>
+{% endfor %}
+</table>
+
+
+{% endblock %}

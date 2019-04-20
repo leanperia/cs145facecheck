@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %} Inference requests {% endblock title %}
+{% block content %}
+
+<h2> Perform a test inference on the web server </h2>
+<br><br>
+
+{% if view.kwargs.pk != None %}
+    {% if view.kwargs.pk == 0 %}
+        <b> You submitted an image with no faces. Try again. </b>
+    {% elif view.kwargs.pk == 1 %}
+        <b> You submitted an image with more than one face. Try again. </b>
+    {% endif %}
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" action="{% url 'run_inference' %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Submit">
+</form>
+
+{% endblock %}

@@ -1,0 +1,9 @@
+django
+django-crispy-forms
+numpy
+sklean
+Pillow
+torch
+torchvision
+opencv
+bcolz

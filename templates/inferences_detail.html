@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Inference request {% endblock title %}
+{% block content %}
+
+<h1> Finished inference at {{targetitem.timestamp}} </h1>
+
+Endagent: {{targetitem.endagent}} <br>
+{% if targetitem.person != Null %}
+Identified person: {{targetitem.person.first_name}} {{targetitem.person.last_name}}
+{% if targetitem.too_many_faces %} (Other faces detected) {% endif %}
+{% elif targetitem.too_many_faces %} Too many faces detected, but none identified
+{% else %} No face detected. {% endif %}<br><br>
+<img src="{{targetitem.inference.url}}"><br><br><br>
+
+
+<form action="{% url 'correct_inference' targetitem.id %}" method="post">
+{% csrf_token %}
+False positive? {% if targetitem.false_positive %}
+Yes.
+<input type="checkbox" name="correction" value="1" id="1">
+<label for="1"> Correct this to No.</label>
+{% else %}
+No
+<input type="checkbox" name="correction" value="2" id="2">
+<label for="2"> Correct this to Yes.</label>
+{% endif %}
+<br>
+False negative? {% if targetitem.false_negative %}
+Yes.
+<input type="checkbox" name="correction" value="3" id="3">
+<label for="3"> Correct this to No. </label>
+{% else %}
+No
+<input type="checkbox" name="correction" value="4" id="4">
+<label for="4"> Correct this to Yes. </label>
+{% endif %}
+<br>
+<input type="submit" value="Trust me on this">
+</form>
+
+{% endblock %}

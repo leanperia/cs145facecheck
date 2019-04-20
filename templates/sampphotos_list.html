@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %} Sample photos {% endblock title %}
+{% block content %}
+
+<h2> Choose which photos to delete for {{person.first_name}} {{person.last_name}} </h2>
+<br><br>
+
+
+<form method="POST" action="{% url 'delete_samplephotos' person.id %}">
+        {% csrf_token %}
+        {% for item in samplephotos %}
+            <input type="checkbox" value="{{ item.id }}" name="photos">
+            <img src="{{ item.photo.url  }}">
+            <br>
+        {% endfor %}
+    <br>
+    <button type="submit" class="save btn btn-default">DELETE!</button>
+</form>
+
+<br><br>
+<a href='{% url 'add_agent' %}'> Register a new end agent </a>
+
+{% endblock %}
