@@ -16,6 +16,16 @@ Identified person: {{targetitem.person.first_name}} {{targetitem.person.last_nam
 
 <form action="{% url 'correct_inference' targetitem.id %}" method="post">
 {% csrf_token %}
+Correctly identified person? {% if targetitem.face_detected %}
+Yes.
+<input type="checkbox" name="correction" value="5" id="5">
+<label for="1"> Correct this to No.</label>
+{% else %}
+No
+<input type="checkbox" name="correction" value="6" id="6">
+<label for="2"> Correct this to Yes.</label>
+{% endif %}
+<br>
 False positive? {% if targetitem.false_positive %}
 Yes.
 <input type="checkbox" name="correction" value="1" id="1">

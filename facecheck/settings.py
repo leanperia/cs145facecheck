@@ -145,36 +145,12 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 MEDIA_URL = '/media/'
 
-###############################################################################
 
-import torch
-import torchvision.transforms as transforms
-import json
-from facedetect.get_nets import PNet, RNet, ONet
-from facedetect.model_irse import IR_50
-from sklearn.externals import joblib
-
-with open('media/knnclf_init.json','r') as f:
-    t = json.load(f)
-print("Now loading the kNN model trained on %s"%t['time_trained'])
-knnclf_path = os.path.join(MEDIA_ROOT,t['filepath'])
-KNN_CLASSIFIER = joblib.load(knnclf_path)
-print("Finished.")
-
-print("Now loading the pretrained InceptionResnet model.")
-cnn_path = os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')
-BACKBONE_CNN = IR_50([112,112])
-BACKBONE_CNN.load_state_dict(torch.load(cnn_path))
-BACKBONE_CNN.eval()
-print("Finished.")
-
-rgb_mean = [0.5, 0.5, 0.5]
-rgb_std = [0.5, 0.5, 0.5]
-IMG_TRANSFORM = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=rgb_mean, std = rgb_std)])
-
-PNET = PNet(os.path.join(MEDIA_ROOT,'models/'))
-PNET.eval()
-RNET = RNet(os.path.join(MEDIA_ROOT,'models/'))
-RNET.eval()
-ONET = ONet(os.path.join(MEDIA_ROOT,'models/'))
-ONET.eval()
+# For caching
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': None
+    }
+}

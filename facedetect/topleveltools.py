@@ -1,12 +1,12 @@
+import os
 import numpy as np
+import torch
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.externals import joblib
 from PIL import Image
 from facedetect.detector import detect_faces
 from facedetect.visualization_utils import show_results
 from facedetect.align_trans import warp_and_crop_face
-
-import torch
 
 
 def l2_norm(input, axis = 1):
@@ -31,10 +31,21 @@ def detect_and_recognize(pil_img, classifier, cnn, transform, pnet, rnet, onet):
     prediction = classifier.predict(vector.detach().numpy())
     return int(prediction[0]), resultimg, extra_faces
 
-def generate_knn_model(path, n_neighbors):
+def generate_embedding(filename, cnn, transform, pnet, rnet, onet):
+    img = Image.open(filename)
+    _, landmarks = detect_faces(img, pnet, rnet, onet)
+    facial5points = [[landmarks[0][j], landmarks[0][j + 5]] for j in range(5)]
+    warped_face = warp_and_crop_face(src_img=np.array(img), facial_pts=facial5points, crop_size=(112,112), align_type='similarity')
+    imgtensor = transform(warped_face)
+    imgtensor.unsqueeze_(0)
+    vector = l2_norm(cnn(imgtensor))
+
+    return vector.detach().numpy()
+
+def generate_knn_model(path, n_neighbors, cnn, transform, pnet, rnet, onet):
     X, y = [], []
     for filename in os.listdir(path):
-        X.append(generate_embedding(os.path.join(path, filename)))
+        X.append(generate_embedding(os.path.join(path, filename), cnn, transform, pnet, rnet, onet))
         y.append(int(filename[6:filename.index('_')]))
     X = np.array(X)
     X = np.squeeze(X, axis=1)

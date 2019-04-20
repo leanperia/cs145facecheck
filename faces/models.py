@@ -55,7 +55,7 @@ class InferenceRequest(Model):
     person = models.ForeignKey(RegisteredPerson, on_delete=models.SET_NULL, blank=True, null=True)
     inference = models.ImageField(upload_to=infphotopath, default='defaultinference.jpg')
     timestamp = models.DateTimeField()
-    face_detected = models.BooleanField('A face was successfully detected', default=False)
+    face_detected = models.BooleanField('A face was correctly detected', default=False)
     false_positive = models.BooleanField(default=False)
     false_negative = models.BooleanField(default=False)
     too_many_faces = models.BooleanField(default=False)
@@ -73,7 +73,7 @@ class MLModelVersion(Model):
     inf_count = models.PositiveIntegerField("Inferences performed", default=0)
     fp_count = models.PositiveIntegerField("False positives incurred", default=0)
     fn_count = models.PositiveIntegerField("False negatives incurred", default=0)
-    # frozen rates - are meant to be null and only calculated when a new model is deployed  
+    # frozen rates - are meant to be null and only calculated when a new model is deployed
     fa_rate = models.FloatField("False acceptance rate", default=None, blank=True, null=True)
     fr_rate = models.FloatField("False rejection rate", default=None, blank=True, null=True)
 
