@@ -16,25 +16,31 @@ from django.utils import timezone
 from django.core.cache import cache
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
-from .forms import RawImageUploadForm, RawIntegerForm
+from .forms import RawImageUploadForm, RetrainModelForm
 from facecheck.settings import MEDIA_ROOT, BASE_DIR #, KNN_CLASSIFIER, BACKBONE_CNN, IMG_TRANSFORM, PNET, RNET, ONET
 from facedetect.topleveltools import detect_and_recognize, generate_knn_model
 from facedetect.get_nets import PNet, RNet, ONet
 from facedetect.model_irse import IR_50
 
-class HomePageView(FormView):
+class HomePageView(TemplateView):
     template_name = 'home.html'
-    form_class = RawIntegerForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        orderedmodelversions = MLModelVersion.objects.all().order_by('-time_trained')
-        context['mlmodelver'] = orderedmodelversions[0]
+        context['mlmodelver'] = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
         context['total_photos'] = SamplePhoto.objects.all().count()
         context['unique_persons'] = RegisteredPerson.objects.filter(numphotos__gt=0).count()
-        if len(orderedmodelversions) > 1:
-            context['lastmodelver'] = orderedmodelversions[1]
-        else: context['lastmodelver'] = None
+        return context
+
+class ListModels(ListView):
+    model = MLModelVersion
+    template_name = "models_list.html"
+    context_object_name = "modelslist"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = RetrainModelForm
+
         return context
 
 class ListPersons(LoginRequiredMixin, ListView):
@@ -140,7 +146,7 @@ def RunInference(request):
 
     knn_classifier = cache.get('KNNCLF')
     if knn_classifier == None:
-        mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
+        mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
         knn_classifier = joblib.load(mv.model.path)
         cache.set('KNNCLF', knn_classifier)
 
@@ -170,13 +176,15 @@ def RunInference(request):
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
         cache.set('TRANSF', img_transform)
 
-    prediction, resultimg, extra_faces = detect_and_recognize(
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
+    prediction, distance, resultimg, extra_faces = detect_and_recognize(
         img, knn_classifier, backbone_cnn, img_transform, pnet, rnet, onet)
 
     if prediction==None:
         instance = InferenceRequest.objects.create(
             endagent = webagent,
             timestamp = timezone.now(),
+            face_detected = False,
         )
         blob = BytesIO()
         img.save(blob, 'JPEG')
@@ -184,14 +192,21 @@ def RunInference(request):
         instance.save()
         return HttpResponseRedirect(reverse('retry_inference', args=(0,)))
 
-    person = RegisteredPerson.objects.get(pk=prediction)
-    fname, lname = person.first_name, person.last_name
-    instance = InferenceRequest.objects.create(
-        endagent = webagent,
-        person = person,
-        timestamp = timezone.now(),
-        face_detected=True
+    if distance > mv.threshold:
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            timestamp = timezone.now(),
+            unknown_detected = True,
+            l2_distance = distance,
         )
+    else:
+        person = RegisteredPerson.objects.get(pk=prediction)
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            person = person,
+            timestamp = timezone.now(),
+            l2_distance = distance,
+            )
     blob = BytesIO()
     resultimg.save(blob, 'JPEG')
     instance.inference.save('newinference.jpg', File(blob), save=False)
@@ -200,7 +215,6 @@ def RunInference(request):
 
     webagent.inf_count += 1
     webagent.save()
-    mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
     mv.inf_count += 1
     mv.save()
 
@@ -214,42 +228,63 @@ class ViewInference(LoginRequiredMixin, DetailView):
 def EditInference(request, pk):
     instance = InferenceRequest.objects.get(pk=pk)
     agent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
-    mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
     values = request.POST.getlist('correction')
-    for value in values:
-        if value=="1":
-            if instance.false_positive==True:
-                agent.fp_count -= 1
-                mv.fp_count -= 1
+    print('the POST dict contains ', values)
+    if "1" in values:
+        if instance.false_positive==True:
+            agent.fp_count -= 1
+            mv.fp_count -= 1
             instance.false_positive = False
-        elif value=="2":
-            if instance.false_positive==False:
-                agent.fp_count += 1
-                mv.fp_count += 1
+    elif "2" in values:
+        if instance.false_positive==False:
+            agent.fp_count += 1
+            mv.fp_count += 1
             instance.false_positive = True
-        elif value=="3":
-            if instance.false_negative==True:
-                agent.fn_count -= 1
-                mv.fn_count -= 1
+    elif "3" in values:
+        if instance.false_negative==True:
+            agent.fn_count -= 1
+            mv.fn_count -= 1
             instance.false_negative = False
-        elif value=="4":
-            if instance.false_negative==False:
-                agent.fn_count += 1
-                mv.fn_count += 1
+    elif "4" in values:
+        if instance.false_negative==False:
+            agent.fn_count += 1
+            mv.fn_count += 1
             instance.false_negative = True
-        elif value=="5":
-            instance.face_detected = False
-        elif value=="6":
-            instance.face_detected = True
+    elif "5" in values:
+        if instance.incorrect_identification==False:
+            agent.ii_count += 1
+            mv.ii_count += 1
+            instance.incorrect_identification = True
+    elif "6" in values:
+        if instance.incorrect_identification==True:
+            agent.ii_count -= 1
+            mv.ii_count -= 1
+            instance.incorrect_identification = False
     instance.save()
     agent.save()
     mv.save()
     return HttpResponseRedirect(reverse('view_inference', args=(pk,)))
 
+def SwitchModel(request):
+    id = int(request.POST.getlist('select model')[0])
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
+    mv.is_in_use = False
+    mv.save()
+
+    mv = MLModelVersion.objects.get(pk=id)
+    mv.is_in_use = True
+    mv.save()
+    cache.set('deployedmv', mv)
+
+    return HttpResponseRedirect(reverse_lazy('home'))
+
 def RetrainMLmodel(request):
-    mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
     mv.fa_rate = (mv.fp_count/float(mv.inf_count))*100
     mv.fr_rate = (mv.fn_count/float(mv.inf_count))*100
+    mv.ii_rate = (mv.ii_count/float(mv.inf_count))*100
+    mv.is_in_use = False
     mv.save()
 
     img_transform = cache.get("TRANSF")
@@ -286,12 +321,14 @@ def RetrainMLmodel(request):
         time_trained = timezone.now(),
         total_photos = SamplePhoto.objects.all().count(),
         unique_persons = RegisteredPerson.objects.filter(numphotos__gt=0).count(),
-        k_neighbors = request.POST['k']
+        k_neighbors = request.POST['k'],
+        threshold = float(request.POST['threshold']),
+        is_in_use = True
     )
     newf = open('newclf.pkl', 'wb+')
     joblib.dump(new_clf, newf)
     new_mv.model.save('newclf.pkl', File(newf), save=False)
     new_mv.save()
-    cache.set('mostrecentmv', new_mv)
+    cache.set('deployedmv', new_mv)
 
     return HttpResponseRedirect(reverse_lazy('home'))

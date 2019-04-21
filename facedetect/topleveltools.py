@@ -29,7 +29,8 @@ def detect_and_recognize(pil_img, classifier, cnn, transform, pnet, rnet, onet):
     imgtensor.unsqueeze_(0)
     vector = l2_norm(cnn(imgtensor))
     prediction = classifier.predict(vector.detach().numpy())
-    return int(prediction[0]), resultimg, extra_faces
+    distances, indices = classifier.kneighbors(vector.detach(), n_neighbors=1)
+    return int(prediction[0]), float(distances[0][0]), resultimg, extra_faces
 
 def generate_embedding(filename, cnn, transform, pnet, rnet, onet):
     img = Image.open(filename)

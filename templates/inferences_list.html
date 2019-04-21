@@ -11,10 +11,13 @@
         <th> End agent </th>
         <th> Person detected </th>
         <th> Timestamp </th>
-        <th> Face correctly detected? </th>
+        <th> Face detected? </th>
+        <th> Unregistered face detected? </th>
+        <th> Person incorrectly detected? </th>
         <th> False positive? </th>
         <th> False negative? </th>
         <th> Too many faces? </th>
+        <th> L2 distance </th>
         <th> View more </th>
     <tr>
 {% for item in targetlist %}
@@ -23,12 +26,15 @@
         <td>{{item.person.first_name}} {{item.person.last_name}}</td>
         <td> {{item.timestamp}} </td>
         <td> {{item.face_detected}} </td>
+        <td> {{item.unknown_detected}} </td>
+        <td> {{item.incorrect_identification}}</td>
         <td> {{item.false_positive}} </td>
         <td> {{item.false_negative}} </td>
         <td> {{item.too_many_faces}} </td>
+        <td> {{item.l2_distance}} </td>
         <td> <a href="{% url 'view_inference' item.id %}"> Link</a> </td>
 {% empty %}
-<tr> <td colspan="8"> None </td></tr>
+<tr> <td colspan="11"> None </td></tr>
 {% endfor %}
 </table>
 

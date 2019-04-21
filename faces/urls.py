@@ -18,4 +18,6 @@ urlpatterns = [
     path('inferences/execute', views.RunInference, name='run_inference'),
     path('inferences/result/<int:pk>', views.ViewInference.as_view(), name='view_inference'),
     path('inferences/result/<int:pk>/correction', views.EditInference, name='correct_inference'),
+    path('models/', views.ListModels.as_view(), name='list_models'),
+    path('models/switch', views.SwitchModel, name='switch_model'),
 ]

@@ -9,6 +9,7 @@ Endagent: {{targetitem.endagent}} <br>
 {% if targetitem.person != Null %}
 Identified person: {{targetitem.person.first_name}} {{targetitem.person.last_name}}
 {% if targetitem.too_many_faces %} (Other faces detected) {% endif %}
+{% elif targetitem.unknown_detected %} Unknown person
 {% elif targetitem.too_many_faces %} Too many faces detected, but none identified
 {% else %} No face detected. {% endif %}<br><br>
 <img src="{{targetitem.inference.url}}"><br><br><br>
@@ -16,7 +17,7 @@ Identified person: {{targetitem.person.first_name}} {{targetitem.person.last_nam
 
 <form action="{% url 'correct_inference' targetitem.id %}" method="post">
 {% csrf_token %}
-Correctly identified person? {% if targetitem.face_detected %}
+Correctly identified person? {% if not targetitem.incorrect_identification %}
 Yes.
 <input type="checkbox" name="correction" value="5" id="5">
 <label for="1"> Correct this to No.</label>
@@ -49,4 +50,8 @@ No
 <input type="submit" value="Trust me on this">
 </form>
 
+
+
+<br><br><br>
+<a href="{% url 'make_inference' %}"> Perform another inference </a>
 {% endblock %}

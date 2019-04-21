@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %} ML Models list {% endblock title %}
+{% block content %}
+
+<h2> History of ML model versions trained </h2>
+<br><br>
+
+<form method="post" action="{% url 'switch_model' %}">
+    {% csrf_token %}
+
+<table>
+    <tr>
+        <th> Time trained </th>
+        <th> Total photos in dataset </th>
+        <th> Total unique persons </th>
+        <th> k_neighbors </th>
+        <th> threshold </th>
+        <th> Inferences performed </th>
+        <th> Incorrect detections count </th>
+        <th> False positive count </th>
+        <th> False negative count </th>
+        <th> II rate </th>
+        <th> FA rate </th>
+        <th> FN rate </th>
+        <th> View more </th>
+    <tr>
+{% for item in modelslist %}
+    <tr>
+        <td> {{item.time_trained}} </td>
+        <td>{{item.total_photos}}</td>
+        <td> {{item.unique_persons}} </td>
+        <td> {{item.k_neighbors}} </td>
+        <td> {{item.threshold}} </td>
+        <td> {{item.inf_count}} </td>
+        <td> {{item.ii_count}} </td>
+        <td> {{item.fp_count}} </td>
+        <td> {{item.fn_count}} </td>
+        <td> {{item.ii_rate}} </td>
+        <td> {{item.fa_rate}} </td>
+        <td> {{item.fr_rate}} </td>
+        <td> <input type="radio" name="select model" value="{{item.id}}"> </td>
+{% empty %}
+<tr> <td colspan="13"> None </td></tr>
+{% endfor %}
+</table>
+
+<input type="submit" value="Switch the model in use.">
+</form>
+
+{% endblock %}

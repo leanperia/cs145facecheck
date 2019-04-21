@@ -12,6 +12,7 @@
         <th> Name </th>
         <th> Location </th>
         <th> Inferences executed </th>
+        <th> II count </th>
         <th> FP count </th>
         <th> FN count </th>
     <tr>
@@ -21,10 +22,11 @@
         <td> {{item.name}} </td>
         <td> {{item.location}} </td>
         <td> {{item.inf_count}} </td>
+        <td> {{item.ii_count}} </td>
         <td> {{item.fp_count}} </td>
         <td> {{item.fn_count}} </td>
 {% empty %}
-<tr> <td colspan="6"> None </td></tr>
+<tr> <td colspan="7"> None </td></tr>
 {% endfor %}
 </table>
 

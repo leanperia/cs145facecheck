@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import CustomUser
+from .models import CustomUser, MLModelVersion
 
 class CustomUserCreationForm(UserCreationForm):
 	class Meta(UserCreationForm.Meta):
@@ -16,5 +16,7 @@ class CustomUserChangeForm(UserChangeForm):
 class RawImageUploadForm(forms.Form):
 	raw_image = forms.ImageField()
 
-class RawIntegerForm(forms.Form):
-	k = forms.IntegerField(min_value=1)
+class RetrainModelForm(forms.ModelForm):
+	class Meta:
+		model = MLModelVersion
+		fields = ('threshold', 'k_neighbors')

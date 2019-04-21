@@ -16,29 +16,20 @@ Now in the database there are <b>{{total_photos}}</b> total photos of <b>{{uniqu
 
 <br><br>
 These are the stats of the current classifier model:<br>
+Trained on: {{mlmodelver.time_trained}}<br>
 Inferences performed: {{mlmodelver.inf_count}}<br>
 False positives incurred: {{mlmodelver.fp_count}}<br>
 False negatives incurred: {{mlmodelver.fn_count}}<br><br>
 
-{% if lastmodelver != None %}
-The last classifier model had the following stats:<br>
-Inferences performed: {{lastmodelver.inf_count}}<br>
-False positives incurred: {{lastmodelver.fp_count}}<br>
-False negatives incurred: {{lastmodelver.fn_count}}<br>
-<b>False acceptance rate: {{lastmodelver.fa_rate}}</b><br>
-<b>False rejection rate: {{lastmodelver.fr_rate}}</b><br>
-{% endif %}
-
 <br><br><br>
-Retrain the model?
 
+Retrain model?
 <form method="post" action="{% url 'retrain_model' %}">
     {% csrf_token %}
     {{ form.as_p }}
     <input type="submit" value="Yes">
 </form>
 
-<br><br><br>
 {% else %}
 
 You're not logged in.
