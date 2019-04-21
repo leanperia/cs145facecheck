@@ -1,0 +1,89 @@
+{% load static %}
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, \
+    initial-scale=1, shrink-to-fit=no">
+    <!--icons!-->
+    <link rel='stylesheet' href='https://use.fontawesome.com/releases/v5.5.0/css/all.css' integrity='sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU' crossorigin='anonymous'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <style>
+    table, th, td {
+        border: 1px solid black;
+        text-align: center
+    }
+    tr:hover {background-color: #f5f5f5;}
+    </style>
+
+
+    <title>{% block title %}FaceCheck{% endblock title %}</title>
+
+  </head>
+  <body>
+    <div class="container-fluid">
+        <header>
+            <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+              <a class="navbar-brand" href="{% url 'home' %}">Facecheck</a>
+              {% if user.is_authenticated %}
+              <a class="navbar-brand" href="{% url 'list_persons' %}"> Registered persons</a>
+              <a class="navbar-brand" href="{% url 'list_agents' %}"> Registered agents </a>
+              <a class="navbar-brand" href="{% url 'make_inference' %}"> Perform Facecheck </a>
+              <a class="navbar-brand" href="{% url 'list_inferences' %}"> Inference History </a>
+              {% endif %}
+
+              <button class="navbar-toggler" type="button" data-toggle="collapse"\
+              data-target="#navbarCollapse" aria-controls="navbarCollapse"\
+              aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+              </button>
+              <div class="collapse navbar-collapse" id="navbarCollapse">
+                {% if user.is_authenticated %}
+                  <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-toggle" href="#" id="userMenu"\
+                      data-toggle="dropdown" aria-haspopup="true" aria-expanded\
+                      ="false">
+                        {{ user.username }}
+                      </a>
+                      <div class="dropdown-menu dropdown-menu-right"\
+                      aria-labelledby="userMenu">
+                        <a class="dropdown-item" href="{% url 'password_change' %}">Change password</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="{% url 'logout' %}">
+                        Log Out</a>
+                      </div>
+                    </li>
+                  </ul>
+                {% else %}
+                  <form class="form-inline ml-auto">
+                    <a href="{% url 'login' %}" class="btn btn-outline-secondary">
+                    Log In</a>
+                  </form>
+                {% endif %}
+              </div>
+            </nav>
+        </header>
+        <div>
+          {% block content %}
+          {% endblock content %}
+        </div>
+        <footer class="footerdiv">
+          &nbsp;FaceCheck 2019 - Created by Team kawAI for CS145 - All Rights Reserved.
+        </footer>
+
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"\ integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4\
+    YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/\
+    JmZQ5stwEULTy" crossorigin="anonymous"></script>
+  </body>
+</html>

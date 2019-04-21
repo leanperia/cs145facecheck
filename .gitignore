@@ -1,0 +1,7 @@
+__pycache__
+
+migrations
+
+.ipynb
+
+*.pth

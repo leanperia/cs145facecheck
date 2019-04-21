@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Profile {% endblock title %}
+{% block content %}
+
+<h1> {{targetperson.first_name}} {{targetperson.last_name}} </h1>
+<br> <h4> {% if targetperson.is_enrstudent %} Is an enrolled UP student
+    {% else %} Is not an enrolled UP student {% endif %}</h4>
+<br> <h4> {% if targetperson.is_faculty %} Is currently a faculty member
+    {% else %} Is not currently a faculty member {% endif %} </h4>
+<br> <h4> Student/faculty number: </h4> {{ targetperson.studentnum }}
+<br> <h4> Degree program: </h4> {{ targetperson.degreeprog }}
+
+<br> <h4> Sample photos: </h4>
+{% for item in samplephotos %}
+<br> <img src="{{item.photo.url}}">
+{% empty %}
+None.
+{% endfor %}
+
+<br><br>
+<a href="{% url 'add_samplephoto' targetperson.id %}"> Add a sample photo for this person </a>
+<br><a href="{% url 'edit_samplephotos' targetperson.id %}"> Delete a sample photo for this person </a>
+
+{% endblock %}
