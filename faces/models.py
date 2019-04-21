@@ -63,9 +63,14 @@ class InferenceRequest(Model):
     def __str__(self):
         return "%i - %s by %s"%(self.id, self.timestamp, self.endagent.name)
 
+def modelpath(instance, filename):
+    path = 'models/'
+    format = 'knnclf_%i.pkl'%instance.id
+    return os.path.join(path,format)
+
 class MLModelVersion(Model):
     time_trained = models.DateTimeField()
-    filepath = models.CharField(max_length=30, blank=False)
+    model = models.FileField(upload_to=modelpath, default='defaultclf.pkl')
     total_photos = models.PositiveIntegerField(default=1)
     unique_persons = models.PositiveIntegerField(default=1)
     k_neighbors = models.PositiveIntegerField(default=1)
@@ -78,4 +83,4 @@ class MLModelVersion(Model):
     fr_rate = models.FloatField("False rejection rate", default=None, blank=True, null=True)
 
     def __str__(self):
-        return "%i - %s - %s"%(self.id, self.filepath, self.time_trained)
+        return "%i - %s - %s"%(self.id, self.model.path, self.time_trained)

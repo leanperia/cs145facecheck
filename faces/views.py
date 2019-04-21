@@ -138,7 +138,10 @@ def RunInference(request):
     webagent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
     img = Image.open(request.FILES['raw_image'])
 
-    knn_classifier = cache.get_or_set('KNNCLF', joblib.load(os.path.join(MEDIA_ROOT,json.load(open('media/knnclf_init.json','r'))['filepath'])))
+    knn_classifier = cache.get('KNNCLF')
+    if knn_classifier == None:
+        mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
+        knn_classifier = joblib.load(mv.model.path)
 
     img_transform = cache.get("TRANSF")
     backbone_cnn = cache.get('CNN')
@@ -191,7 +194,7 @@ def RunInference(request):
 
     webagent.inf_count += 1
     webagent.save()
-    mv = MLModelVersion.objects.all().order_by('-time_trained')[0]
+    mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
     mv.inf_count += 1
     mv.save()
 
@@ -274,14 +277,10 @@ def RetrainMLmodel(request):
         unique_persons = RegisteredPerson.objects.filter(numphotos__gt=0).count(),
         k_neighbors = request.POST['k']
     )
-    filename = "knnclf_%i.sav"%new_mv.id
-    new_mv.filepath = os.path.join('models/',filename)
+    newf = open('newclf.pkl', 'wb+')
+    joblib.dump(new_clf, newf)
+    new_mv.model.save('newclf.pkl', File(newf), save=False)
     new_mv.save()
     cache.set('mostrecentmv', new_mv)
 
-    joblib.dump(new_clf, os.path.join(MEDIA_ROOT, new_mv.filepath))
-
-    new_init = {'time_trained':new_mv.time_trained, 'filepath':new_mv.filepath}
-    with open('media/knnclf_init.json', 'w') as f:
-        json.dump(new_init, f)
     return HttpResponseRedirect(reverse_lazy('home'))

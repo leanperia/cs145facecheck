@@ -1,10 +1,13 @@
-django
+Django==2.1
 django-crispy-forms
 numpy
-sklean
+sklearn
 Pillow
 torch
 torchvision
 opencv
 bcolz
 python-memcached
+boto3
+botocore
+django-storages
