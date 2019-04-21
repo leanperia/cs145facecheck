@@ -83,4 +83,4 @@ class MLModelVersion(Model):
     fr_rate = models.FloatField("False rejection rate", default=None, blank=True, null=True)
 
     def __str__(self):
-        return "%i - %s - %s"%(self.id, self.model.path, self.time_trained)
+        return "%i - %s - %s"%(self.id, self.model.url, self.time_trained)

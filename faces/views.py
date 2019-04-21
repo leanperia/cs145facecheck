@@ -142,6 +142,7 @@ def RunInference(request):
     if knn_classifier == None:
         mv = cache.get_or_set('mostrecentmv', MLModelVersion.objects.all().order_by('-time_trained')[0])
         knn_classifier = joblib.load(mv.model.path)
+        cache.set('KNNCLF', knn_classifier)
 
     img_transform = cache.get("TRANSF")
     backbone_cnn = cache.get('CNN')
@@ -152,17 +153,22 @@ def RunInference(request):
         backbone_cnn = IR_50([112,112])
         backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
         backbone_cnn.eval()
+        cache.set('CNN', backbone_cnn)
     if pnet == None:
         pnet = PNet(os.path.join(MEDIA_ROOT,'models/'))
         pnet.eval()
+        cache.set('PNET', pnet)
     if rnet == None:
         rnet = RNet(os.path.join(MEDIA_ROOT,'models/'))
         rnet.eval()
+        cache.set('RNET', rnet)
     if onet == None:
         onet = ONet(os.path.join(MEDIA_ROOT,'models/'))
         onet.eval()
+        cache.set('ONET', onet)
     if img_transform == None:
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
+        cache.set('TRANSF', img_transform)
 
     prediction, resultimg, extra_faces = detect_and_recognize(
         img, knn_classifier, backbone_cnn, img_transform, pnet, rnet, onet)
@@ -255,17 +261,22 @@ def RetrainMLmodel(request):
         backbone_cnn = IR_50([112,112])
         backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
         backbone_cnn.eval()
+        cache.set('CNN', backbone_cnn)
     if pnet == None:
         pnet = PNet(os.path.join(MEDIA_ROOT,'models/'))
         pnet.eval()
+        cache.set('PNET', pnet)
     if rnet == None:
         rnet = RNet(os.path.join(MEDIA_ROOT,'models/'))
         rnet.eval()
+        cache.set('RNET', rnet)
     if onet == None:
         onet = ONet(os.path.join(MEDIA_ROOT,'models/'))
         onet.eval()
+        cache.set('ONET', onet)
     if img_transform == None:
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
+        cache.set('TRANSF', img_transform)
 
     new_clf = generate_knn_model(os.path.join(MEDIA_ROOT,'samplephotos/'),int(request.POST['k']),
         backbone_cnn, img_transform, pnet, rnet, onet)
