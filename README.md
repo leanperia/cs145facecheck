@@ -24,10 +24,12 @@ Download the IRnet (166MB) from the link below then place it in media/models/bac
 https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth
 
 
-# Notes:
+# Notes for collaborators:
 * master branch - a working version only in your local machine
 * ml+s3 - works with an amazon S3 bucket (all generated and uploaded images go there)
 * with_amazon - version without ML models - was deployed successfully with AWS Elastic Beanstalk
+
+Superuser credentials: username - tester1, tester2 / pw - sakura123
 
 If you want to access the S3 bucket, use the credentials in the aws-iam file. Login with the link there, and use the password in there.
 
