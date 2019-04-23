@@ -77,7 +77,7 @@ class MLModelVersion(Model):
     model = models.FileField(upload_to=modelpath, default='defaultclf.pkl')
     total_photos = models.PositiveIntegerField(default=1)
     unique_persons = models.PositiveIntegerField(default=1)
-    k_neighbors = models.PositiveIntegerField(default=1)
+    k_neighbors = models.PositiveIntegerField("k parameter for kNN algorithm", default=1)
     threshold = models.FloatField('Threshold for distinguishing registered and unregistered faces',default=1.1)
     is_in_use = models.BooleanField(default=False, blank=False, null=False)
     # These are intended to be cumulative counts since the next most recently trained model

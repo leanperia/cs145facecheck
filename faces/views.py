@@ -30,6 +30,7 @@ class HomePageView(TemplateView):
         context['mlmodelver'] = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
         context['total_photos'] = SamplePhoto.objects.all().count()
         context['unique_persons'] = RegisteredPerson.objects.filter(numphotos__gt=0).count()
+        context['form'] = RetrainModelForm()
         return context
 
 class ListModels(ListView):
@@ -280,12 +281,12 @@ def SwitchModel(request):
     return HttpResponseRedirect(reverse_lazy('home'))
 
 def RetrainMLmodel(request):
+    k = int(request.POST['k_neighbors'])
+    thresh = float(request.POST['threshold'])
+
+    # Retrieve the currently used model first, train new model THEN change is_in_use to False
     mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
-    mv.fa_rate = (mv.fp_count/float(mv.inf_count))*100
-    mv.fr_rate = (mv.fn_count/float(mv.inf_count))*100
-    mv.ii_rate = (mv.ii_count/float(mv.inf_count))*100
-    mv.is_in_use = False
-    mv.save()
+
 
     img_transform = cache.get("TRANSF")
     backbone_cnn = cache.get('CNN')
@@ -313,16 +314,16 @@ def RetrainMLmodel(request):
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
         cache.set('TRANSF', img_transform)
 
-    new_clf = generate_knn_model(os.path.join(MEDIA_ROOT,'samplephotos/'),int(request.POST['k']),
-        backbone_cnn, img_transform, pnet, rnet, onet)
+    new_clf = generate_knn_model(os.path.join(MEDIA_ROOT,'samplephotos/'),
+        k, backbone_cnn, img_transform, pnet, rnet, onet)
     cache.set('KNNCLF', new_clf)
     print('Trained a new kNN classifier!')
     new_mv = MLModelVersion.objects.create(
         time_trained = timezone.now(),
         total_photos = SamplePhoto.objects.all().count(),
         unique_persons = RegisteredPerson.objects.filter(numphotos__gt=0).count(),
-        k_neighbors = request.POST['k'],
-        threshold = float(request.POST['threshold']),
+        k_neighbors = k,
+        threshold = thresh,
         is_in_use = True
     )
     newf = open('newclf.pkl', 'wb+')
@@ -331,4 +332,9 @@ def RetrainMLmodel(request):
     new_mv.save()
     cache.set('deployedmv', new_mv)
 
+    mv.fa_rate = (mv.fp_count/float(mv.inf_count))*100
+    mv.fr_rate = (mv.fn_count/float(mv.inf_count))*100
+    mv.ii_rate = (mv.ii_count/float(mv.inf_count))*100
+    mv.is_in_use = False
+    mv.save()
     return HttpResponseRedirect(reverse_lazy('home'))
