@@ -36,7 +36,7 @@ class SamplePhoto(Model):
     photo = models.ImageField(upload_to=samplephotopath, default='default.png')
 
     def __str__(self):
-        return "%i - %s %s - %s"%(self.id, self.person.first_name, self.person.last_name, self.photo.path)
+        return "%i - %s %s - %s"%(self.id, self.person.first_name, self.person.last_name)
 
 class EndAgent(Model):
     manager = models.ForeignKey(CustomUser, on_delete=models.CASCADE)

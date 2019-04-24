@@ -37,9 +37,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'django_cleanup.apps.CleanupConfig',
+    
     'crispy_forms',
     'faces',
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -132,8 +134,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-STATIC_URL = '/static/'
-#static files like CSS!
+
 STATICFILES_DIRS = [os.path.join(BASE_DIR,'static')]
 
 AUTH_USER_MODEL = 'faces.CustomUser'
@@ -143,7 +144,23 @@ LOGIN_URL = 'login/'
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
-MEDIA_URL = '/media/'
+
+AWS_ACCESS_KEY_ID = 'AKIAUPXKIARTUZS7VEMF'
+AWS_SECRET_ACCESS_KEY = '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'
+AWS_STORAGE_BUCKET_NAME = 'cs145facecheck'
+AWS_DEFAULT_ACL = None
+AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+
+STATIC_LOCATION = 'static'
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+STATIC_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, STATIC_LOCATION)
+
+PUBLIC_MEDIA_LOCATION = 'media'
+MEDIA_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, PUBLIC_MEDIA_LOCATION)
+DEFAULT_FILE_STORAGE = 'facecheck.storage_backends.MediaStorage'
 
 
 # For caching

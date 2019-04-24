@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from collections import OrderedDict
 import numpy as np
 import sys, os
-
+from urllib.request import urlopen
+from io import BytesIO
 
 class Flatten(nn.Module):
 
@@ -27,7 +28,7 @@ class Flatten(nn.Module):
 
 class PNet(nn.Module):
 
-    def __init__(self, model_path):
+    def __init__(self, url):
 
         super().__init__()
 
@@ -53,7 +54,8 @@ class PNet(nn.Module):
         self.conv4_1 = nn.Conv2d(32, 2, 1, 1)
         self.conv4_2 = nn.Conv2d(32, 4, 1, 1)
 
-        weights = np.load(os.path.join(model_path,"pnet.npy"))[()]
+
+        weights = np.load(BytesIO(urlopen(url+'pnet.npy').read()))[()]
         for n, p in self.named_parameters():
             p.data = torch.FloatTensor(weights[n])
 
@@ -74,7 +76,7 @@ class PNet(nn.Module):
 
 class RNet(nn.Module):
 
-    def __init__(self, model_path):
+    def __init__(self, url):
 
         super().__init__()
 
@@ -98,7 +100,7 @@ class RNet(nn.Module):
         self.conv5_1 = nn.Linear(128, 2)
         self.conv5_2 = nn.Linear(128, 4)
 
-        weights = np.load(os.path.join(model_path,"rnet.npy"))[()]
+        weights = np.load(BytesIO(urlopen(url+'rnet.npy').read()))[()]
         for n, p in self.named_parameters():
             p.data = torch.FloatTensor(weights[n])
 
@@ -119,7 +121,7 @@ class RNet(nn.Module):
 
 class ONet(nn.Module):
 
-    def __init__(self, model_path):
+    def __init__(self, url):
 
         super().__init__()
 
@@ -149,7 +151,7 @@ class ONet(nn.Module):
         self.conv6_2 = nn.Linear(256, 4)
         self.conv6_3 = nn.Linear(256, 10)
 
-        weights = np.load(os.path.join(model_path,"onet.npy"))[()]
+        weights = np.load(BytesIO(urlopen(url+'onet.npy').read()))[()]
         for n, p in self.named_parameters():
             p.data = torch.FloatTensor(weights[n])
 

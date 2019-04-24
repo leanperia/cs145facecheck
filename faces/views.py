@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 from io import BytesIO
 from PIL import Image
 from sklearn.externals import joblib
+from urllib.request import urlopen
 
 from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.shortcuts import render
@@ -17,7 +18,7 @@ from django.core.cache import cache
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
 from .forms import RawImageUploadForm, RetrainModelForm
-from facecheck.settings import MEDIA_ROOT, BASE_DIR #, KNN_CLASSIFIER, BACKBONE_CNN, IMG_TRANSFORM, PNET, RNET, ONET
+from facecheck.settings import MEDIA_ROOT, BASE_DIR, MEDIA_URL #, KNN_CLASSIFIER, BACKBONE_CNN, IMG_TRANSFORM, PNET, RNET, ONET
 from facedetect.topleveltools import detect_and_recognize, generate_knn_model
 from facedetect.get_nets import PNet, RNet, ONet
 from facedetect.model_irse import IR_50
@@ -143,12 +144,13 @@ class RetryInference(LoginRequiredMixin, FormView):
 
 def RunInference(request):
     webagent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
     img = Image.open(request.FILES['raw_image'])
+
 
     knn_classifier = cache.get('KNNCLF')
     if knn_classifier == None:
-        mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
-        knn_classifier = joblib.load(mv.model.path)
+        knn_classifier = joblib.load(mv.model.url)
         cache.set('KNNCLF', knn_classifier)
 
     img_transform = cache.get("TRANSF")
@@ -158,26 +160,33 @@ def RunInference(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
+        print('downloading pretrained InceptionResnet from S3 bucket')
+        """
+        newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read())))
+        """
         backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+
         backbone_cnn.eval()
+        print('CNN loaded successfully')
         cache.set('CNN', backbone_cnn)
     if pnet == None:
-        pnet = PNet(os.path.join(MEDIA_ROOT,'models/'))
+        pnet = PNet(MEDIA_URL+'models/')
         pnet.eval()
         cache.set('PNET', pnet)
     if rnet == None:
-        rnet = RNet(os.path.join(MEDIA_ROOT,'models/'))
+        rnet = RNet(MEDIA_URL+'models/')
         rnet.eval()
         cache.set('RNET', rnet)
     if onet == None:
-        onet = ONet(os.path.join(MEDIA_ROOT,'models/'))
+        onet = ONet(MEDIA_URL+'models/')
         onet.eval()
         cache.set('ONET', onet)
     if img_transform == None:
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
         cache.set('TRANSF', img_transform)
 
-    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
+
     prediction, distance, resultimg, extra_faces = detect_and_recognize(
         img, knn_classifier, backbone_cnn, img_transform, pnet, rnet, onet)
 
@@ -295,27 +304,33 @@ def RetrainMLmodel(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
+        print('downloading pretrained InceptionResnet from S3 bucket')
+        """
+        newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read())))
+        """
         backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+
         backbone_cnn.eval()
+        print('CNN loaded successfully')
         cache.set('CNN', backbone_cnn)
     if pnet == None:
-        pnet = PNet(os.path.join(MEDIA_ROOT,'models/'))
+        pnet = PNet(MEDIA_URL+'models/')
         pnet.eval()
         cache.set('PNET', pnet)
     if rnet == None:
-        rnet = RNet(os.path.join(MEDIA_ROOT,'models/'))
+        rnet = RNet(MEDIA_URL+'models/')
         rnet.eval()
         cache.set('RNET', rnet)
     if onet == None:
-        onet = ONet(os.path.join(MEDIA_ROOT,'models/'))
+        onet = ONet(MEDIA_URL+'models/')
         onet.eval()
         cache.set('ONET', onet)
     if img_transform == None:
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
         cache.set('TRANSF', img_transform)
 
-    new_clf = generate_knn_model(os.path.join(MEDIA_ROOT,'samplephotos/'),
-        k, backbone_cnn, img_transform, pnet, rnet, onet)
+    new_clf = generate_knn_model(k, backbone_cnn, img_transform, pnet, rnet, onet)
     cache.set('KNNCLF', new_clf)
     print('Trained a new kNN classifier!')
     new_mv = MLModelVersion.objects.create(

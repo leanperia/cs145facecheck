@@ -33,10 +33,10 @@ Superuser credentials: username - tester1, tester2 / pw - sakura123
 
 If you want to access the S3 bucket, use the credentials in the aws-iam file. Login with the link there, and use the password in there.
 
-When I run this on my machine it consumes 2GB of RAM, clearly because the ML models are memory-heavy (the InceptionResnet serialized file is already 166MB, it will consume more as a loaded model in memory). An amazon EC2 t2.micro instance only has 1GB of ram. I have not yet successfully deployed on an amazon EC2 with the ML model so we can't be sure yet if it really will not work (I have already deployed this FaceCheck django app but without the ML model - see the with_amazon branch). I also tried to deploy on heroku but again memory size problems. So I will look into using SageMaker (AWS free tier available) to integrate with FaceCheck. 
+When I run this on my machine it consumes 2GB of RAM, clearly because the ML models are memory-heavy (the InceptionResnet serialized file is already 166MB, it will consume more as a loaded model in memory). An amazon EC2 t2.micro instance only has 1GB of ram. I have not yet successfully deployed on an amazon EC2 with the ML model so we can't be sure yet if it really will not work (I have already deployed this FaceCheck django app but without the ML model - see the with_amazon branch). I also tried to deploy on heroku but again memory size problems. So I will look into using SageMaker (AWS free tier available) to integrate with FaceCheck.
 
-Most probably for the final project version we will be using: 
+Most probably for the final project version we will be using:
 * EC2 t2.micro compute instance
 * S3 storage
-* SageMaker notebook server that can service RESTful requests 
+* SageMaker notebook server that can service RESTful requests
 * RDS PostgreSQL database (EC2 allows SQLite databases, as  shown in with_amazon branch, but the judges will be impressed with this)
