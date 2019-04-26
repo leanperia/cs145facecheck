@@ -12,7 +12,7 @@ from django.shortcuts import render
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, ListView, DetailView, CreateView, FormView
-from django.core.files import File
+from django.core import files
 from django.utils import timezone
 from django.core.cache import cache
 
@@ -150,7 +150,8 @@ def RunInference(request):
 
     knn_classifier = cache.get('KNNCLF')
     if knn_classifier == None:
-        knn_classifier = joblib.load(mv.model.url)
+        newfile = urlopen(mv.model.url).read()
+        knn_classifier = joblib.load(BytesIO(newfile))
         cache.set('KNNCLF', knn_classifier)
 
     img_transform = cache.get("TRANSF")
@@ -218,7 +219,7 @@ def RunInference(request):
             )
     blob = BytesIO()
     resultimg.save(blob, 'JPEG')
-    instance.inference.save('newinference.jpg', File(blob), save=False)
+    instance.inference.save('newinference.jpg', files.File(blob), save=False)
     if extra_faces: instance.too_many_faces = True
     instance.save()
 
@@ -304,9 +305,9 @@ def RetrainMLmodel(request):
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
         print('downloading pretrained InceptionResnet from S3 bucket')
-        newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
-        #backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        #newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+        #backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
 
         backbone_cnn.eval()
         print('CNN loaded successfully')
@@ -338,9 +339,9 @@ def RetrainMLmodel(request):
         threshold = thresh,
         is_in_use = True
     )
-    newf = open('newclf.pkl', 'wb+') #BytesIO
+    newf = BytesIO
     joblib.dump(new_clf, newf)
-    new_mv.model.save('newclf.pkl', File(newf), save=False)
+    new_mv.model.save('newclf.pkl', files.File(newf), save=False)
     new_mv.save()
     cache.set('deployedmv', new_mv)
 
