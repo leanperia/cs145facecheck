@@ -161,11 +161,10 @@ def RunInference(request):
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
         print('downloading pretrained InceptionResnet from S3 bucket')
-        """
+
         newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read())))
-        """
-        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+        #backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
 
         backbone_cnn.eval()
         print('CNN loaded successfully')
@@ -305,11 +304,9 @@ def RetrainMLmodel(request):
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
         print('downloading pretrained InceptionResnet from S3 bucket')
-        """
         newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read())))
-        """
-        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+        #backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
 
         backbone_cnn.eval()
         print('CNN loaded successfully')
@@ -341,7 +338,7 @@ def RetrainMLmodel(request):
         threshold = thresh,
         is_in_use = True
     )
-    newf = open('newclf.pkl', 'wb+')
+    newf = open('newclf.pkl', 'wb+') #BytesIO
     joblib.dump(new_clf, newf)
     new_mv.model.save('newclf.pkl', File(newf), save=False)
     new_mv.save()

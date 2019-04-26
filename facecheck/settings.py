@@ -25,7 +25,7 @@ SECRET_KEY = '#wygk@oy3!c+wvse8g^-*4_i6v494dvsjlkg_$m2b$($8vt@=1'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['cs145facecheck.ap-southeast-1.elasticbeanstalk.com']
 
 
 # Application definition
@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_cleanup.apps.CleanupConfig',
-    
+
     'crispy_forms',
     'faces',
     'storages'
