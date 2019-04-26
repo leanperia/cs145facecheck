@@ -339,7 +339,7 @@ def RetrainMLmodel(request):
         threshold = thresh,
         is_in_use = True
     )
-    newf = BytesIO
+    newf = BytesIO()
     joblib.dump(new_clf, newf)
     new_mv.model.save('newclf.pkl', files.File(newf), save=False)
     new_mv.save()
