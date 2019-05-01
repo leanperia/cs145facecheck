@@ -3,6 +3,7 @@ __pycache__
 migrations
 media
 
+.idea
 .ipynb
 
 *.pth
