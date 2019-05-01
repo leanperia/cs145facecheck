@@ -1,4 +1,7 @@
+# torch
+#  
 import torch
+
 import numpy as np
 import torchvision.transforms as transforms
 from io import BytesIO
@@ -13,6 +16,7 @@ from align_trans import warp_and_crop_face
 
 application = Flask(__name__)
 
+#variables
 cnn = None
 pnet = None
 rnet = None
@@ -42,8 +46,8 @@ def load_models():
     print('loading DL models')
     cnn = IR_50([112,112])
 
-    newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-    cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+    #newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+    #cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
     #cnn.load_state_dict(torch.load('backbone_cnn.pth'))
     cnn.eval()
     pnet = PNet('')
@@ -70,6 +74,11 @@ def generate_embedding(img, cnn, pnet, rnet, onet):
     vector = l2_norm(cnn(imgtensor))
     return vector.detach().numpy()
 
+# application route
+# 'generate-embedding' rule is abound to the predict() function
+# if you visit http://localhost:5000/generate-embedding,
+# the output of the predict() function will be rendered in the
+# browser
 @application.route("/generate-embedding", methods=["POST"])
 def predict():
     data = {"success": False}

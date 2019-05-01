@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-
+from .import apps
 urlpatterns = [
     path('', views.HomePageView.as_view(), name='home'),
     path('retrain', views.RetrainMLmodel, name='retrain_model'),
@@ -20,4 +20,5 @@ urlpatterns = [
     path('inferences/result/<int:pk>/correction', views.EditInference, name='correct_inference'),
     path('models/', views.ListModels.as_view(), name='list_models'),
     path('models/switch', views.SwitchModel, name='switch_model'),
+    path('request-inference',views.requestInference, name='request_inference')
 ]

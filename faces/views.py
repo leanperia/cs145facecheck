@@ -22,6 +22,8 @@ from facedetect.topleveltools import detect_and_recognize, generate_knn_model
 from facedetect.get_nets import PNet, RNet, ONet
 from facedetect.model_irse import IR_50
 
+import json
+from django.views.decorators.csrf import csrf_exempt
 class HomePageView(TemplateView):
     template_name = 'home.html'
 
@@ -143,7 +145,7 @@ class RetryInference(LoginRequiredMixin, FormView):
 
 def RunInference(request):
     webagent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
-    img = Image.open(request.FILES['raw_image'])
+    img = Image.open(request.FILES['raw_image']) #inserting image
 
     knn_classifier = cache.get('KNNCLF')
     if knn_classifier == None:
@@ -158,7 +160,8 @@ def RunInference(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
-        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth'),map_location=torch.device('cpu')
+        ))
         backbone_cnn.eval()
         cache.set('CNN', backbone_cnn)
     if pnet == None:
@@ -218,7 +221,6 @@ def RunInference(request):
     webagent.save()
     mv.inf_count += 1
     mv.save()
-
     return HttpResponseRedirect(reverse('view_inference', args=(instance.id,)))
 
 class ViewInference(LoginRequiredMixin, DetailView):
@@ -295,7 +297,7 @@ def RetrainMLmodel(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
-        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth'), map_location=torch.device('cpu')))
         backbone_cnn.eval()
         cache.set('CNN', backbone_cnn)
     if pnet == None:
@@ -338,3 +340,106 @@ def RetrainMLmodel(request):
     mv.is_in_use = False
     mv.save()
     return HttpResponseRedirect(reverse_lazy('home'))
+
+def apiInfer(img):
+    webagent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
+    #img = Image.open(request.FILES['raw_image']) #inserting image
+
+    knn_classifier = cache.get('KNNCLF')
+    if knn_classifier == None:
+        mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
+        knn_classifier = joblib.load(mv.model.path)
+        cache.set('KNNCLF', knn_classifier)
+
+    img_transform = cache.get("TRANSF")
+    backbone_cnn = cache.get('CNN')
+    pnet = cache.get('PNET')
+    rnet = cache.get('RNET')
+    onet = cache.get('ONET')
+    if backbone_cnn == None:
+        backbone_cnn = IR_50([112,112])
+        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth'),map_location=torch.device('cpu')
+        ))
+        backbone_cnn.eval()
+        cache.set('CNN', backbone_cnn)
+    if pnet == None:
+        pnet = PNet(os.path.join(MEDIA_ROOT,'models/'))
+        pnet.eval()
+        cache.set('PNET', pnet)
+    if rnet == None:
+        rnet = RNet(os.path.join(MEDIA_ROOT,'models/'))
+        rnet.eval()
+        cache.set('RNET', rnet)
+    if onet == None:
+        onet = ONet(os.path.join(MEDIA_ROOT,'models/'))
+        onet.eval()
+        cache.set('ONET', onet)
+    if img_transform == None:
+        img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
+        cache.set('TRANSF', img_transform)
+
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
+    prediction, distance, resultimg, extra_faces = detect_and_recognize(
+        img, knn_classifier, backbone_cnn, img_transform, pnet, rnet, onet)
+
+    if prediction==None:
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            timestamp = timezone.now(),
+            face_detected = False,
+        )
+        blob = BytesIO()
+        img.save(blob, 'JPEG')
+        instance.inference.save('newinference.jpg', File(blob), save=False)
+        instance.save()
+        msg = "retry"
+        return msg
+        #return HttpResponseRedirect(reverse('retry_inference', args=(0,))) 
+
+    if distance > mv.threshold:
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            timestamp = timezone.now(),
+            unknown_detected = True,
+            l2_distance = distance,
+        )
+    else:
+        person = RegisteredPerson.objects.get(pk=prediction)
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            person = person,
+            timestamp = timezone.now(),
+            l2_distance = distance,
+            )
+    blob = BytesIO()
+    resultimg.save(blob, 'JPEG')
+    instance.inference.save('newinference.jpg', File(blob), save=False)
+    if extra_faces: instance.too_many_faces = True
+    instance.save()
+
+    webagent.inf_count += 1
+    webagent.save()
+    mv.inf_count += 1
+    mv.save()
+
+    reply = {}
+    if instance.person:
+        reply["name"] = person.first_name + " " + person.last_name
+        reply["result"] = "accept"
+    else:
+        reply["name"] = "Unknown"
+        reply["result"] = "reject"
+    return reply 
+
+@csrf_exempt
+def requestInference(request):
+    data = {"success": False}
+    if request.method == 'POST':
+        if request.FILES.get('image'): # if there is an image
+            image= Image.open(request.FILES['image'])
+            reply= apiInfer(image)
+            data["name"] = reply["name"]
+            data["result"] = reply["result"]
+            data["success"] = True
+    json_data = json.dumps(data)  # convert to json file
+    return HttpResponse(json_data)
