@@ -351,3 +351,101 @@ def RetrainMLmodel(request):
     mv.is_in_use = False
     mv.save()
     return HttpResponseRedirect(reverse_lazy('home'))
+
+def RESTRunInference(request):
+    output = {'success':False}
+
+    webagent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
+    mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
+    img = Image.open(request.FILES['image'])
+
+    knn_classifier = cache.get('KNNCLF')
+    if knn_classifier == None:
+        newfile = urlopen(mv.model.url).read()
+        knn_classifier = joblib.load(BytesIO(newfile))
+        cache.set('KNNCLF', knn_classifier)
+
+    img_transform = cache.get("TRANSF")
+    backbone_cnn = cache.get('CNN')
+    pnet = cache.get('PNET')
+    rnet = cache.get('RNET')
+    onet = cache.get('ONET')
+    if backbone_cnn == None:
+        backbone_cnn = IR_50([112,112])
+        print('downloading pretrained InceptionResnet from S3 bucket')
+
+        #newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+        #backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+        backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+
+        backbone_cnn.eval()
+        print('CNN loaded successfully')
+        cache.set('CNN', backbone_cnn)
+    if pnet == None:
+        pnet = PNet(MEDIA_URL+'models/')
+        pnet.eval()
+        cache.set('PNET', pnet)
+    if rnet == None:
+        rnet = RNet(MEDIA_URL+'models/')
+        rnet.eval()
+        cache.set('RNET', rnet)
+    if onet == None:
+        onet = ONet(MEDIA_URL+'models/')
+        onet.eval()
+        cache.set('ONET', onet)
+    if img_transform == None:
+        img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
+        cache.set('TRANSF', img_transform)
+
+
+    prediction, distance, resultimg, extra_faces = detect_and_recognize(
+        img, knn_classifier, backbone_cnn, img_transform, pnet, rnet, onet)
+
+    if prediction==None:
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            timestamp = timezone.now(),
+            face_detected = False,
+        )
+        blob = BytesIO()
+        img.save(blob, 'JPEG')
+        instance.inference.save('newinference.jpg', File(blob), save=False)
+        instance.save()
+        return HttpResponseRedirect(reverse('retry_inference', args=(0,)))
+
+    if distance > mv.threshold:
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            timestamp = timezone.now(),
+            unknown_detected = True,
+            l2_distance = distance,
+        )
+    else:
+        person = RegisteredPerson.objects.get(pk=prediction)
+        instance = InferenceRequest.objects.create(
+            endagent = webagent,
+            person = person,
+            timestamp = timezone.now(),
+            l2_distance = distance,
+            )
+    blob = BytesIO()
+    resultimg.save(blob, 'JPEG')
+    instance.inference.save('newinference.jpg', files.File(blob), save=False)
+    if extra_faces: instance.too_many_faces = True
+    instance.save()
+
+    webagent.inf_count += 1
+    webagent.save()
+    mv.inf_count += 1
+    mv.save()
+
+    output['success'] = True
+    output['name'] = f"{instance.person.first_name} {instance.person.last_name}"
+    output['idnumber'] = f"{instance.person.studentnum}"
+    if distance > mv.threshold:
+        output['decision'] = "reject"
+    else:
+        output['decision'] = "accept"
+
+    json_out = json.dumps(out)
+    return HttpResponse(json_out)

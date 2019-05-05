@@ -20,4 +20,5 @@ urlpatterns = [
     path('inferences/result/<int:pk>/correction', views.EditInference, name='correct_inference'),
     path('models/', views.ListModels.as_view(), name='list_models'),
     path('models/switch', views.SwitchModel, name='switch_model'),
+    path('rest/request-inference', views.RESTRunInference, name='REST-request-inference'),
 ]

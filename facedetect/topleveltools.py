@@ -70,6 +70,7 @@ def generate_knn_model(n_neighbors, cnn, transform, pnet, rnet, onet):
     samplephotos = SamplePhoto.objects.all()
     for instance in samplephotos:
         urlfile = BytesIO(urlopen(instance.photo.url).read())
+        print(f"generating embedding for {instance.photo.url}")
         X.append(generate_embedding(urlfile, cnn, transform, pnet, rnet, onet))
         y.append(instance.person.id)
     X = np.array(X)
