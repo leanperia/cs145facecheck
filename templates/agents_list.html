@@ -11,6 +11,8 @@
         <th> Manager </th>
         <th> Name </th>
         <th> Location </th>
+        <th> Serial No. </th>
+        <th> Secret key </th>
         <th> Inferences executed </th>
         <th> II count </th>
         <th> FP count </th>
@@ -21,12 +23,14 @@
         <td> {{item.manager.username}} </td>
         <td> {{item.name}} </td>
         <td> {{item.location}} </td>
+        <td> {{item.serial_number}} </td>
+        <td> {{item.secret_key}} </td>
         <td> {{item.inf_count}} </td>
         <td> {{item.ii_count}} </td>
         <td> {{item.fp_count}} </td>
         <td> {{item.fn_count}} </td>
 {% empty %}
-<tr> <td colspan="7"> None </td></tr>
+<tr> <td colspan="9"> None </td></tr>
 {% endfor %}
 </table>
 

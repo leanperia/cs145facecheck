@@ -47,6 +47,8 @@ class EndAgent(Model):
     ii_count = models.PositiveIntegerField("Incorrect identifications count", default=0)
     fp_count = models.PositiveIntegerField("False positives count", default=0)
     fn_count = models.PositiveIntegerField("False negatives count", default=0)
+    serial_number = models.CharField('Raspberry Pi Serial Number', max_length=16, blank=True, null=True, unique=True)
+    secret_key = models.CharField('Authentication key', max_length=20, blank=False, default='Fs9gX@a8pzTl$20m')
 
     def __str__(self):
         return "%i - %s"%(self.id, self.name)
@@ -92,4 +94,7 @@ class MLModelVersion(Model):
 
 
     def __str__(self):
-        return "%i - %s - %s"%(self.id, self.model.url, self.time_trained)
+        finalstr = ""
+        if self.is_in_use: finalstr = "[IN USE]"
+        finalstr += "%i - %s - %s"%(self.id, self.model.url, self.time_trained)
+        return finalstr

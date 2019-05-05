@@ -111,7 +111,17 @@ if 'RDS_HOSTNAME' in os.environ:
             'PORT': os.environ['RDS_PORT'],
         }
     }
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'facecheck',
+    	'USER': 'leanperia',
+    	'PASSWORD': 'sakura123',
+    	'HOST': 'localhost',
+    	'PORT': '',
+        }
+    }
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
 

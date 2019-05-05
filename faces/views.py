@@ -16,6 +16,7 @@ from django.core import files
 from django.utils import timezone
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
+from django.core.exceptions import ObjectDoesNotExist
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
 from .forms import RawImageUploadForm, RetrainModelForm
@@ -121,7 +122,7 @@ class ListAgents(LoginRequiredMixin, ListView):
 
 class AddAgent(LoginRequiredMixin, CreateView):
     model = EndAgent
-    fields = ['name', 'location']
+    fields = ['name', 'location', 'serial_number', 'secret_key']
     template_name = 'agents_add.html'
     success_url = reverse_lazy('list_agents')
 
@@ -353,11 +354,19 @@ def RetrainMLmodel(request):
     mv.save()
     return HttpResponseRedirect(reverse_lazy('home'))
 
+
 @csrf_exempt
 def RESTRunInference(request):
-    output = {'success':False}
+    output = {'success':False, 'authenticated': False}
+    try:
+        agent = EndAgent.objects.get(serial_number=request.POST.get('sn', None))
+    except ObjectDoesNotExist:
+        return HttpResponse(json.dumps(output))
+    if request.POST.get('key', None) != agent.secret_key:
+        return HttpResponse(json.dumps(output))
+    else:
+        output['authenticated'] = True
 
-    webagent = cache.get_or_set('webagent',EndAgent.objects.get(pk=2))
     mv = cache.get_or_set('deployedmv', MLModelVersion.objects.filter(is_in_use=True)[0])
     img = Image.open(request.FILES['image'])
 
@@ -405,7 +414,7 @@ def RESTRunInference(request):
 
     if prediction==None:
         instance = InferenceRequest.objects.create(
-            endagent = webagent,
+            endagent = agent,
             timestamp = timezone.now(),
             face_detected = False,
         )
@@ -413,11 +422,11 @@ def RESTRunInference(request):
         img.save(blob, 'JPEG')
         instance.inference.save('newinference.jpg', File(blob), save=False)
         instance.save()
-        return HttpResponseRedirect(reverse('retry_inference', args=(0,)))
+        return HttpResponse(json.dumps(output))
 
     if distance > mv.threshold:
         instance = InferenceRequest.objects.create(
-            endagent = webagent,
+            endagent = agent,
             timestamp = timezone.now(),
             unknown_detected = True,
             l2_distance = distance,
@@ -425,7 +434,7 @@ def RESTRunInference(request):
     else:
         person = RegisteredPerson.objects.get(pk=prediction)
         instance = InferenceRequest.objects.create(
-            endagent = webagent,
+            endagent = agent,
             person = person,
             timestamp = timezone.now(),
             l2_distance = distance,
@@ -436,18 +445,26 @@ def RESTRunInference(request):
     if extra_faces: instance.too_many_faces = True
     instance.save()
 
-    webagent.inf_count += 1
-    webagent.save()
+    agent.inf_count += 1
+    agent.save()
     mv.inf_count += 1
     mv.save()
 
     output['success'] = True
-    output['name'] = f"{instance.person.first_name} {instance.person.last_name}"
-    output['idnumber'] = f"{instance.person.studentnum}"
     if distance > mv.threshold:
         output['decision'] = "reject"
+        output['name'] = "Unknown"
+        output['idnumber'] = "n/a"
     else:
         output['decision'] = "accept"
+        output['name'] = f"{instance.person.first_name} {instance.person.last_name}"
+        output['idnumber'] = f"{instance.person.studentnum}"
+        output['person_pk'] = f"{instance.person.id}"
 
     json_out = json.dumps(output)
     return HttpResponse(json_out)
+    """
+    This is the format of the curl request:
+    curl 'http://localhost:8000/rest/request-inference' -X POST
+    -F 'sn=v93nagsd09132nas' -F 'key=Fs9gX@a8pzTl$20m' -F image=@sakura05.jpg
+    """
