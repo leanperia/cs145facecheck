@@ -15,6 +15,7 @@ from django.views.generic import TemplateView, ListView, DetailView, CreateView,
 from django.core import files
 from django.utils import timezone
 from django.core.cache import cache
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
 from .forms import RawImageUploadForm, RetrainModelForm
@@ -352,6 +353,7 @@ def RetrainMLmodel(request):
     mv.save()
     return HttpResponseRedirect(reverse_lazy('home'))
 
+@csrf_exempt
 def RESTRunInference(request):
     output = {'success':False}
 
@@ -447,5 +449,5 @@ def RESTRunInference(request):
     else:
         output['decision'] = "accept"
 
-    json_out = json.dumps(out)
+    json_out = json.dumps(output)
     return HttpResponse(json_out)
