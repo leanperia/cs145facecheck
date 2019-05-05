@@ -25,7 +25,9 @@ SECRET_KEY = '#wygk@oy3!c+wvse8g^-*4_i6v494dvsjlkg_$m2b$($8vt@=1'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.31.40.220','cs145facecheck.ap-southeast-1.elasticbeanstalk.com', '172.31.41.3']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.31.40.220', '172.31.41.3',
+                'cs145facecheck.ap-southeast-1.elasticbeanstalk.com',
+                'cs145facecheck.com']
 
 
 # Application definition
