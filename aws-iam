@@ -9,3 +9,14 @@ password: givemethewiltolive60.0
 django superusers
 usernames: seanryanchan / anicagalano / loisleal / jethromagbanua
 password: kawaii60
+
+RDS_HOSTNAME
+cs145facecheckdb.cj3rjsrq5a3k.ap-southeast-1.rds.amazonaws.com
+RDS_PORT
+5432
+RDS_DB_NAME
+cs145facecheckdb
+RDS_USERNAME
+leanperia
+RDS_PASSWORD
+kawaii60
