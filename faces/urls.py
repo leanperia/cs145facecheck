@@ -1,5 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework import routers
 from . import views
+
+router = routers.DefaultRouter()
+router.register('registered_persons', views.RegisteredPersonViewSet)
+#router.register('sample_photos', views.SamplePhotoViewSet)
+#router.register('inference_request', views.InferenceRequestViewSet)
 
 urlpatterns = [
     path('', views.HomePageView.as_view(), name='home'),
@@ -21,4 +27,7 @@ urlpatterns = [
     path('models/', views.ListModels.as_view(), name='list_models'),
     path('models/switch', views.SwitchModel, name='switch_model'),
     path('rest/request-inference', views.RESTRunInference, name='REST-request-inference'),
+    path('rest/', include(router.urls)),
+    path('rest/add-photo', views.RESTAddPhoto, name='REST-add-photo'),
+    path('rest/inference-correction', views.InferenceCorrection, name='inference-correction')
 ]

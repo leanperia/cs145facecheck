@@ -2,9 +2,11 @@ import os
 import json
 import torch
 import torchvision.transforms as transforms
+import numpy as np
 from io import BytesIO
 from PIL import Image
 from sklearn.externals import joblib
+from sklearn.neighbors import KNeighborsClassifier
 from urllib.request import urlopen
 
 from django.http import HttpResponse, Http404, HttpResponseRedirect
@@ -17,13 +19,18 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
+from .serializers import RegisteredPersonSerializer, SampePhotoSerializer, InferenceRequestSerializer
 from .forms import RawImageUploadForm, RetrainModelForm
 from facecheck.settings import MEDIA_ROOT, BASE_DIR, MEDIA_URL #, KNN_CLASSIFIER, BACKBONE_CNN, IMG_TRANSFORM, PNET, RNET, ONET
-from facedetect.topleveltools import detect_and_recognize, generate_knn_model
+from facedetect.topleveltools import detect_and_recognize, generate_knn_model, generate_embedding
 from facedetect.get_nets import PNet, RNet, ONet
 from facedetect.model_irse import IR_50
+
+LOCAL_BACKBONE = True
 
 class HomePageView(TemplateView):
     template_name = 'home.html'
@@ -77,10 +84,48 @@ class AddSamplePhoto(LoginRequiredMixin, CreateView):
         # The way form_valid works is the form entry is saved, and then we get redirected to the success url
         # Instead of doing return super().form_valid(form), we insert the necessary increment to RegisteredPerson.numphotos before saving
         this_person = RegisteredPerson.objects.get(pk=self.kwargs['pk'])
+        form.instance.person = this_person
+
+        img_transform = cache.get("TRANSF")
+        backbone_cnn = cache.get('CNN')
+        pnet = cache.get('PNET')
+        rnet = cache.get('RNET')
+        onet = cache.get('ONET')
+        if backbone_cnn == None:
+            backbone_cnn = IR_50([112,112])
+            if LOCAL_BACKBONE:
+                print("loading backbone_cnn.pth locally")
+                backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+            else:
+                print('downloading pretrained InceptionResnet from S3 bucket')
+                newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+                backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+            backbone_cnn.eval()
+            print('CNN loaded successfully')
+            cache.set('CNN', backbone_cnn)
+        if pnet == None:
+            pnet = PNet(MEDIA_URL+'models/')
+            pnet.eval()
+            cache.set('PNET', pnet)
+        if rnet == None:
+            rnet = RNet(MEDIA_URL+'models/')
+            rnet.eval()
+            cache.set('RNET', rnet)
+        if onet == None:
+            onet = ONet(MEDIA_URL+'models/')
+            onet.eval()
+            cache.set('ONET', onet)
+        if img_transform == None:
+            img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
+            cache.set('TRANSF', img_transform)
+
+        uploaded_img = Image.open(self.request.FILES['photo'])
+        embedding = generate_embedding(uploaded_img, backbone_cnn, img_transform, pnet, rnet, onet)
+        form.instance.embedding = embedding.tolist()[0]
+
+        self.object = form.save()
         this_person.numphotos += 1
         this_person.save()
-        form.instance.person = this_person
-        self.object = form.save()
         return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
@@ -112,7 +157,6 @@ def DeleteSamplePhotos(request, pk):
             person.numphotos -= 1
             person.save()
     return HttpResponseRedirect(reverse('view_person', args=(pk,)))
-
 
 
 class ListAgents(LoginRequiredMixin, ListView):
@@ -163,12 +207,13 @@ def RunInference(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
-        print('downloading pretrained InceptionResnet from S3 bucket')
-
-        newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
-        #backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
-
+        if LOCAL_BACKBONE:
+            print("loading backbone_cnn.pth locally")
+            backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        else:
+            print('downloading pretrained InceptionResnet from S3 bucket')
+            newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+            backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
         backbone_cnn.eval()
         print('CNN loaded successfully')
         cache.set('CNN', backbone_cnn)
@@ -306,11 +351,13 @@ def RetrainMLmodel(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
-        print('downloading pretrained InceptionResnet from S3 bucket')
-        newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
-        #backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
-
+        if LOCAL_BACKBONE:
+            print("loading backbone_cnn.pth locally")
+            backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        else:
+            print('downloading pretrained InceptionResnet from S3 bucket')
+            newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+            backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
         backbone_cnn.eval()
         print('CNN loaded successfully')
         cache.set('CNN', backbone_cnn)
@@ -330,7 +377,17 @@ def RetrainMLmodel(request):
         img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
         cache.set('TRANSF', img_transform)
 
-    new_clf = generate_knn_model(k, backbone_cnn, img_transform, pnet, rnet, onet)
+    X, y = [], []
+    print("Retrieving all face embeddings and training a classifier.")
+    samplephotos = SamplePhoto.objects.all()
+    for instance in samplephotos:
+        X.append(np.array(instance.embedding))
+        y.append(instance.person.id)
+    X = np.array(X)
+    #X = np.squeeze(X, axis=1)
+    new_clf = KNeighborsClassifier(n_neighbors = k)
+    new_clf.fit(X,y)
+
     cache.set('KNNCLF', new_clf)
     print('Trained a new kNN classifier!')
     new_mv = MLModelVersion.objects.create(
@@ -383,12 +440,13 @@ def RESTRunInference(request):
     onet = cache.get('ONET')
     if backbone_cnn == None:
         backbone_cnn = IR_50([112,112])
-        print('downloading pretrained InceptionResnet from S3 bucket')
-
-        newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
-        backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
-        #backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
-
+        if LOCAL_BACKBONE:
+            print("loading backbone_cnn.pth locally")
+            backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+        else:
+            print('downloading pretrained InceptionResnet from S3 bucket')
+            newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+            backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
         backbone_cnn.eval()
         print('CNN loaded successfully')
         cache.set('CNN', backbone_cnn)
@@ -459,7 +517,7 @@ def RESTRunInference(request):
         output['decision'] = "accept"
         output['name'] = f"{instance.person.first_name} {instance.person.last_name}"
         output['idnumber'] = f"{instance.person.studentnum}"
-        output['person_pk'] = f"{instance.person.id}"
+        output['inference_pk'] = f"{instance.id}"
 
     json_out = json.dumps(output)
     return HttpResponse(json_out)
@@ -468,3 +526,32 @@ def RESTRunInference(request):
     curl 'http://localhost:8000/rest/request-inference' -X POST
     -F 'sn=v93nagsd09132nas' -F 'key=Fs9gX@a8pzTl$20m' -F image=@sakura05.jpg
     """
+
+@csrf_exempt
+def InferenceCorrection(request):
+    output = {'success': False}
+
+    return HttpResponse(json.dumps(output))
+
+@csrf_exempt
+def RESTAddPhoto(request):
+    output = {'success': False}
+
+    return HttpResponse(json.dumps(output))
+
+class RegisteredPersonViewSet(ModelViewSet):
+    queryset = RegisteredPerson.objects.all()
+    serializer_class = RegisteredPersonSerializer
+    permission_classes = (IsAuthenticated,)
+
+"""
+class SamplePhotoViewSet(ModelViewSet):
+    queryset = SamplePhoto.objects.all()
+    serializer_class = SamplePhoto
+    permission_classes = (IsAuthenticated,)
+
+class InferenceRequestViewSet(ModelViewSet):
+    queryset =  InferenceRequest.objects.all()
+    serializer_class = InferenceRequestSerializer
+    permission_classes = (IsAuthenticated,)
+"""

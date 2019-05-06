@@ -35,11 +35,21 @@ def detect_and_recognize(pil_img, classifier, cnn, transform, pnet, rnet, onet):
     distances, indices = classifier.kneighbors(vector.detach(), n_neighbors=1)
     return int(prediction[0]), float(distances[0][0]), resultimg, extra_faces
 
-def generate_embedding(filename, cnn, transform, pnet, rnet, onet):
+def generate_embedding_old(filename, cnn, transform, pnet, rnet, onet):
     img = Image.open(filename)
     _, landmarks = detect_faces(img, pnet, rnet, onet)
     facial5points = [[landmarks[0][j], landmarks[0][j + 5]] for j in range(5)]
     warped_face = warp_and_crop_face(src_img=np.array(img), facial_pts=facial5points, crop_size=(112,112), align_type='similarity')
+    imgtensor = transform(warped_face)
+    imgtensor.unsqueeze_(0)
+    vector = l2_norm(cnn(imgtensor))
+
+    return vector.detach().numpy()
+
+def generate_embedding(PILimg, cnn, transform, pnet, rnet, onet):
+    _, landmarks = detect_faces(PILimg, pnet, rnet, onet)
+    facial5points = [[landmarks[0][j], landmarks[0][j + 5]] for j in range(5)]
+    warped_face = warp_and_crop_face(src_img=np.array(PILimg), facial_pts=facial5points, crop_size=(112,112), align_type='similarity')
     imgtensor = transform(warped_face)
     imgtensor.unsqueeze_(0)
     vector = l2_norm(cnn(imgtensor))
@@ -71,7 +81,7 @@ def generate_knn_model(n_neighbors, cnn, transform, pnet, rnet, onet):
     for instance in samplephotos:
         urlfile = BytesIO(urlopen(instance.photo.url).read())
         print(f"generating embedding for {instance.photo.url}")
-        X.append(generate_embedding(urlfile, cnn, transform, pnet, rnet, onet))
+        X.append(generate_embedding_old(urlfile, cnn, transform, pnet, rnet, onet))
         y.append(instance.person.id)
     X = np.array(X)
     X = np.squeeze(X, axis=1)

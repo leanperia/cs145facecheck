@@ -2,6 +2,7 @@ import os
 from django.db import models
 from django.db.models import Model
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 
 class CustomUser(AbstractUser):
     def __str__(self):
@@ -14,6 +15,7 @@ class RegisteredPerson(Model):
     is_faculty = models.BooleanField('Is a faculty member', default=False)
     studentnum = models.CharField('Student/faculty number', max_length=9, null=True, blank=True)
     degreeprog = models.CharField('Degree program', max_length=50, null=True, blank=True)
+    department = models.CharField('Department', max_length=50, null=True, blank=True)
     numphotos = models.PositiveIntegerField('Number of sample photos', default=0)
 
     def __str__(self):
@@ -34,9 +36,10 @@ def infphotopath(instance, filename):
 class SamplePhoto(Model):
     person = models.ForeignKey(RegisteredPerson, on_delete=models.CASCADE)
     photo = models.ImageField(upload_to=samplephotopath, default='default.png')
+    embedding = ArrayField(models.FloatField(), default=list)
 
     def __str__(self):
-        return "%i - %s %s - %s"%(self.id, self.person.first_name, self.person.last_name)
+        return "%i - %s %s"%(self.id, self.person.first_name, self.person.last_name)
 
 class EndAgent(Model):
     manager = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
