@@ -30,7 +30,7 @@ from facedetect.topleveltools import detect_and_recognize, generate_knn_model, g
 from facedetect.get_nets import PNet, RNet, ONet
 from facedetect.model_irse import IR_50
 
-LOCAL_BACKBONE = True
+LOCAL_BACKBONE = False
 
 class HomePageView(TemplateView):
     template_name = 'home.html'
@@ -71,7 +71,7 @@ class ViewPerson(LoginRequiredMixin, DetailView):
 
 class AddPerson(LoginRequiredMixin, CreateView):
     model = RegisteredPerson
-    fields = ['first_name', 'last_name', 'is_enrstudent', 'is_faculty', 'studentnum', 'degreeprog']
+    fields = ['first_name', 'last_name', 'is_enrstudent', 'is_faculty', 'studentnum', 'degreeprog', 'department']
     template_name = 'persons_add.html'
     success_url = reverse_lazy('add_person')
 
