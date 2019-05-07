@@ -21,6 +21,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import BasicAuthentication
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
 from .serializers import RegisteredPersonSerializer, SampePhotoSerializer, InferenceRequestSerializer
@@ -179,6 +180,7 @@ class ListInferences(LoginRequiredMixin, ListView):
     model = InferenceRequest
     template_name = 'inferences_list.html'
     context_object_name = 'targetlist'
+    ordering = ['-timestamp']
 
 class RequestInference(LoginRequiredMixin, FormView):
     form_class = RawImageUploadForm
@@ -543,15 +545,18 @@ class RegisteredPersonViewSet(ModelViewSet):
     queryset = RegisteredPerson.objects.all()
     serializer_class = RegisteredPersonSerializer
     permission_classes = (IsAuthenticated,)
+    authentication_classes = (BasicAuthentication,)
 
 """
 class SamplePhotoViewSet(ModelViewSet):
     queryset = SamplePhoto.objects.all()
     serializer_class = SamplePhoto
     permission_classes = (IsAuthenticated,)
+    authentication_classes = (BasicAuthentication,)
 
 class InferenceRequestViewSet(ModelViewSet):
     queryset =  InferenceRequest.objects.all()
     serializer_class = InferenceRequestSerializer
     permission_classes = (IsAuthenticated,)
+    authentication_classes = (BasicAuthentication,)
 """
