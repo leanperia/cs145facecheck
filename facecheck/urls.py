@@ -27,3 +27,8 @@ urlpatterns = [
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+urlpatterns += patterns(
+    '',
+    url(r'^health/?', include('health_check.urls')),
+)

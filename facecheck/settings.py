@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+import requests
+from django.core.exceptions import ImproperlyConfigure
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,10 +27,26 @@ SECRET_KEY = '#wygk@oy3!c+wvse8g^-*4_i6v494dvsjlkg_$m2b$($8vt@=1'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+def get_ec2_hostname():
+    try:
+        ipconfig = 'http://169.254.169.254/latest/meta-data/local-ipv4'
+        return requests.get(ipconfig, timeout=10).text
+    except Exception:
+        error = 'You have to be running on AWS to use AWS settings'
+        raise ImproperlyConfigured(error)
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.31.40.220', '172.31.41.3',
                 'cs145facecheck.ap-southeast-1.elasticbeanstalk.com',
                 'http://cs145facecheck2.ap-southeast-1.elasticbeanstalk.com',
-                'cs145facecheck.com']
+                'cs145facecheck.com',
+                '.amazonaws.com',
+                '.elasticbeanstalk.com',
+                get_ec2_hostname(),
+            ]
 
 
 # Application definition
@@ -47,6 +65,10 @@ INSTALLED_APPS = [
     'crispy_forms',
     'storages',
     'rest_framework',
+    'health_check',
+    'health_check.db',
+    'health_check.cache',
+    'health_check.storage',
 ]
 
 MIDDLEWARE = [
