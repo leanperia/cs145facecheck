@@ -18,17 +18,14 @@ from django.urls import path, include
 from django.contrib.auth import views as auth_views
 
 from django.conf import settings
+from django.conf.urls import url
 from django.conf.urls.static import static
 
 urlpatterns = [
     path('', include('faces.urls')),
     path('admin/', admin.site.urls),
     path('', include('django.contrib.auth.urls')),
+    url(r'^health/', include('health_check.urls'))
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-urlpatterns += patterns(
-    '',
-    url(r'^health/?', include('health_check.urls')),
-)
