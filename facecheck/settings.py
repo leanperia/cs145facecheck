@@ -38,6 +38,7 @@ def get_ec2_hostname():
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.31.40.220', '172.31.41.3',
                 'cs145facecheck.ap-southeast-1.elasticbeanstalk.com',
