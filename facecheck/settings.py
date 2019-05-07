@@ -27,6 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.31.40.220', '172.31.41.3',
                 'cs145facecheck.ap-southeast-1.elasticbeanstalk.com',
+                'http://cs145facecheck2.ap-southeast-1.elasticbeanstalk.com',
                 'cs145facecheck.com']
 
 
