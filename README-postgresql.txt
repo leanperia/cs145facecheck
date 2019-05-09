@@ -7,12 +7,13 @@
 6.) create database facecheck;
 7.) create user leanperia with password 'sakura123';
 8.) open a new terminal. use a virtualenv with requirements installed already. then enter into facecheck-amazon-complete directory
-9.) series of steps: 
+9.) rename facecheck/settings.py to settings_deployed.py and rename settings_local.py to settings.py
+10.) series of steps: 
   python manage.py makemigrations faces
   python manage.py migrate faces
   python manage.py migrate
   python manage.py createsuperuser tester1 (any password - don't forget it)
-10.) (extra steps so the database's assumptions will be followed):
+11.) (extra steps so the database's assumptions will be followed):
   python manage.py shell
   (inside shell)
   from faces.models import MLModelVersion as ml
@@ -20,4 +21,5 @@
   x = ml.objects.create(is_in_use=True, time_trained=t.now())
   x.save()
   quit()
-11.) create two end agents. the second  one is the 'web agent' (i will change this later so the first one is the web agent)
+12.) create two end agents. the second  one is the 'web agent' (i will change this later so the first one is the web agent)
+13.) you can now use runserver. you will have to populate the local postgresql databse in your machine
