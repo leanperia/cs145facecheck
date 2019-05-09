@@ -1,4 +1,39 @@
-Web server for FaceCheck IoT project
+# How to setup to use facecheck on a local machine
+
+0.) download: https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/bitnami-lappstack-7.1.24-0-linux-x64-installer.run
+    download the backbone_cnn.pth https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth
+1.) install using bitnami-lappstack-7.1.24-0-linux-x64-installer.run
+2.) take note of superuser password! you will need it
+3.) enter into the directory of lappstack
+4.) ./use_lappstack
+5.) psql -U postgres (use the password you gave at installation time)
+6.) create database facecheck;
+7.) create user leanperia with password 'sakura123';
+8.) open a new terminal. 
+    (on any chosen directory outside of facecheck-amazon-complete directory)
+    virtualenv djangoenv
+    source djangoenv/bin/activate
+    then enter into facecheck-amazon-complete directory
+    pip install -r requirements.txt
+9.) rename facecheck/settings.py to settings_deployed.py and rename settings_local.py to settings.py
+    change faces/views.py LOCAL_BACKBONE=False to True
+    put the backbone_cnn.pht file into media/models
+10.) series of steps: 
+  python manage.py makemigrations faces
+  python manage.py migrate faces
+  python manage.py migrate
+  python manage.py createsuperuser tester1 (any password - don't forget it)
+11.) (extra steps so the database's assumptions will be followed):
+  python manage.py shell
+  (inside shell)
+  from faces.models import MLModelVersion as ml
+  from django.utils import timezone as t
+  x = ml.objects.create(is_in_use=True, time_trained=t.now())
+  x.save()
+  quit()
+13.) you can now use runserver. you will have to populate the local postgresql databse in your machine but all images will be uploaded the S3 bucket. before performing inferences locally, you need to create two end agents in the browser interface. the second  one is the 'web agent' (i will change this later so the first one is the web agent)
+
+# Web server for FaceCheck IoT project
 
 by Team kawAI
 
@@ -13,7 +48,10 @@ Specifically, we took his:
 
 Our strategy is to use the pretrained neural networks to generate 512-dimensional
 embedding vectors and use the k-nearest neighbors machine learning model to
-distinguish embedding vectors for registered individuals.
+classify embedding vectors for registered individuals. We use an adjustable threshold 
+L2 norm distance between the target embedding vector and the nearest embedding vector in 
+the database to determine target embedding vector really describes someone in the database
+or the person in the target image is an unknown person. This threshold value will need to be tuned.
 
 Our recommendation is to upload at least 3 sample photos per registered individual.
 When retraining the kNN model, make sure to use an odd k (1,3,5) and that most individuals
@@ -22,21 +60,3 @@ no sample photos will not be included when retraining the model.
 
 Download the IRnet (166MB) from the link below then place it in media/models/backbone_cnn.pth
 https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth
-
-
-# Notes for collaborators:
-* master branch - a working version only in your local machine
-* ml+s3 - works with an amazon S3 bucket (all generated and uploaded images go there)
-* with_amazon - version without ML models - was deployed successfully with AWS Elastic Beanstalk
-
-Superuser credentials: username - tester1, tester2 / pw - sakura123
-
-If you want to access the S3 bucket, use the credentials in the aws-iam file. Login with the link there, and use the password in there.
-
-When I run this on my machine it consumes 2GB of RAM, clearly because the ML models are memory-heavy (the InceptionResnet serialized file is already 166MB, it will consume more as a loaded model in memory). An amazon EC2 t2.micro instance only has 1GB of ram. I have not yet successfully deployed on an amazon EC2 with the ML model so we can't be sure yet if it really will not work (I have already deployed this FaceCheck django app but without the ML model - see the with_amazon branch). I also tried to deploy on heroku but again memory size problems. So I will look into using SageMaker (AWS free tier available) to integrate with FaceCheck.
-
-Most probably for the final project version we will be using:
-* EC2 t2.micro compute instance
-* S3 storage
-* SageMaker notebook server that can service RESTful requests
-* RDS PostgreSQL database (EC2 allows SQLite databases, as  shown in with_amazon branch, but the judges will be impressed with this)
