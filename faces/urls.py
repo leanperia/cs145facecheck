@@ -20,5 +20,10 @@ urlpatterns = [
     path('inferences/result/<int:pk>/correction', views.EditInference, name='correct_inference'),
     path('models/', views.ListModels.as_view(), name='list_models'),
     path('models/switch', views.SwitchModel, name='switch_model'),
-    path('request-inference',views.requestInference, name='request_inference')
+    path('request-inference',views.requestInference, name='request_inference'),
+
+    path('test_path/', views.exampleJSON),
+    path('make_people/', views.AddPeopleREST),
+    path('add_photos/<slug:person_name>/', views.AddPhotoREST)
+
 ]

@@ -24,6 +24,9 @@ from facedetect.model_irse import IR_50
 
 import json
 from django.views.decorators.csrf import csrf_exempt
+
+from .seanREST import *
+
 class HomePageView(TemplateView):
     template_name = 'home.html'
 
@@ -394,7 +397,7 @@ def apiInfer(img):
         instance.save()
         msg = "retry"
         return msg
-        #return HttpResponseRedirect(reverse('retry_inference', args=(0,))) 
+        #return HttpResponseRedirect(reverse('retry_inference', args=(0,)))
 
     if distance > mv.threshold:
         instance = InferenceRequest.objects.create(
@@ -429,7 +432,7 @@ def apiInfer(img):
     else:
         reply["name"] = "Unknown"
         reply["result"] = "reject"
-    return reply 
+    return reply
 
 @csrf_exempt
 def requestInference(request):

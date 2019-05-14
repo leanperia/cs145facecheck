@@ -1,0 +1,23 @@
+[
+  {
+    "model": "faces.RegisteredPerson",
+    "pk": 1,
+    "fields": {
+      "first_name": "Sean",
+      "last_name": "Chan",
+      "is_enrstudent": 1,
+      "is_faculty": 0,
+      "studentnum": "201600012",
+      "degreeprog": "BS CS",
+      "numphotos": 0
+    }
+  },
+  {
+    "model": "faces.CustomUser",
+    "pk": 3,
+    "fields": {
+      "username": "user",
+      "password": "password"
+    }
+  }
+]
