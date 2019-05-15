@@ -44,6 +44,7 @@ LOCAL_BACKBONE = False
 @csrf_exempt
 def RESTInferenceCorrection(request):
     output = {'success':False, 'authenticated': False}
+    print(request.POST)
     try:
         agent = EndAgent.objects.get(serial_number=request.POST.get('sn', None))
     except ObjectDoesNotExist:
