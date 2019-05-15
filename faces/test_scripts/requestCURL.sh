@@ -17,8 +17,8 @@ curl -XPOST -H "Content-type: application/json" -d '
 ' 'https://cs145facecheck.com/rest/add-person'
 
 # addPhoto
-curl -XPOST -F 'image=@FILENAME.jpg' \
--F  'first_name=!!!first_name' \
+curl -XPOST -F 'image=@49261918_10215945516643331_1396781707494948864_o.jpg' \
+-F  'first_name=Sean' \
 'https://cs145facecheck.com/rest/add-photo'
 
 
