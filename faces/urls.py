@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework import routers
 from . import views
+from . import moreREST
 
 router = routers.DefaultRouter()
 router.register('registered_persons', views.RegisteredPersonViewSet)
@@ -29,5 +30,5 @@ urlpatterns = [
     path('rest/request-inference', views.RESTRunInference, name='REST-request-inference'),
     path('rest/', include(router.urls)),
     path('rest/add-photo', views.RESTAddPhoto, name='REST-add-photo'),
-    path('rest/inference-correction', views.InferenceCorrection, name='inference-correction')
+    path('rest/inference-correction', moreREST.RESTInferenceCorrection, name='REST-inference-correction')
 ]

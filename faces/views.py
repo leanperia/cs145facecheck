@@ -520,6 +520,9 @@ def RESTRunInference(request):
         output['name'] = f"{instance.person.first_name} {instance.person.last_name}"
         output['idnumber'] = f"{instance.person.studentnum}"
         output['inference_pk'] = f"{instance.id}"
+        # FP
+        # FN
+        
 
     json_out = json.dumps(output)
     return HttpResponse(json_out)
