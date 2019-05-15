@@ -24,6 +24,7 @@ urlpatterns = [
 
     path('test_path/', views.exampleJSON),
     path('make_people/', views.AddPeopleREST),
-    path('add_photos/<slug:person_name>/', views.AddPhotoREST)
+    path('add_photo/<slug:person_name>/', views.AddPhotoREST),
+    path('delete_photo/<slug:person_name>/', views.DeletePhotoREST)
 
 ]

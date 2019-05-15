@@ -29,6 +29,10 @@ from django.core.files.storage import default_storage
 # TODO
 # "make a REST api para makakapag CRUD ng RegisteredPerson, SamplePhoto and InferenceRequest by curl."
 
+# todo:
+# - logging RPi -> export to csv and be able to manually fetch it..?
+# - 50 faces
+
 @csrf_exempt
 def helloWorld(request):
     return render(request, "sean.html")
@@ -57,14 +61,31 @@ def AddPhotoREST(request, person_name):
         if request.FILES.get('image'): # if there is an image
             print(request.FILES['image'])
             image = Image.open(request.FILES['image'])
-            file = request.FILES.get('image')
-            targetPerson = RegisteredPerson.objects.filter(first_name=person_name).first()
-            targetPerson.numphotos += 1
-            filename = str(targetPerson.id) + "_" + str(targetPerson.numphotos) + "." +image.format
+            blob = BytesIO()
+            image.save(blob, image.format)
+            # file = request.FILES.get('image')
+            p = RegisteredPerson.objects.filter(first_name=person_name).first()
+            filename = str(p.id) + "_" + str(p.samplephoto_set.count() + 1) + "." +image.format
             data["image"] = filename
-            with default_storage.open('samplephotos/' + filename, 'wb+') as destination:
-                for chunk in file.chunks():
-                    destination.write(chunk)
-            targetPerson.save()
+            s = SamplePhoto.objects.create(person=p)
+            s.photo.save(filename, File(blob), save=False)
+            p.samplephoto_set.add(s)
+            p.numphotos = p.samplephoto_set.count()
+            p.save()
+            s.save()
             data["success"] = True
         return HttpResponse(json.dumps(data))
+
+@csrf_exempt
+# TODO
+def DeletePhotoREST(request, person_name):
+    photoName = request.POST.get('photo')
+    if deletelist:
+        targetPerson = RegisteredPerson.objects.filter(first_name=person_name).first()
+        for stringid in deletelist:
+            target = SamplePhoto.objects.get(pk=int(stringid))
+            target.photo.delete(save=True)
+            target.delete()
+            person.numphotos -= 1
+            person.save()
+    return HttpResponseRedirect(reverse('view_person', args=(pk,)))
