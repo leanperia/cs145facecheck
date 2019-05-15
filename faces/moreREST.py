@@ -96,6 +96,7 @@ def RESTAddPerson(request):
 
 @csrf_exempt
 def RESTAddPhoto(request):
+    result = {"success": False}
     if request.method == "POST":
         if request.FILES.get('image'): # if there is an image
             print(request.FILES['image'])
@@ -105,12 +106,12 @@ def RESTAddPhoto(request):
             # file = request.FILES.get('image')
             p = RegisteredPerson.objects.filter(first_name=request.POST.get('first_name')).first()
             filename = str(p.id) + "_" + str(p.samplephoto_set.count() + 1) + "." +image.format
-            data["image"] = filename
+            result["image"] = filename
             s = SamplePhoto.objects.create(person=p)
-            s.photo.save(filename, File(blob), save=False)
+            s.photo.save(filename, files.File(blob), save=False)
             p.samplephoto_set.add(s)
             p.numphotos = p.samplephoto_set.count()
             p.save()
             s.save()
-            data["success"] = True
-        return HttpResponse(json.dumps(data))
+            result["success"] = True
+        return HttpResponse(json.dumps(result))

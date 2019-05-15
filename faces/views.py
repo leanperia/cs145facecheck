@@ -522,7 +522,7 @@ def RESTRunInference(request):
         output['inference_pk'] = f"{instance.id}"
         # FP
         # FN
-        
+
 
     json_out = json.dumps(output)
     return HttpResponse(json_out)

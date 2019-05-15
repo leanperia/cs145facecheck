@@ -31,6 +31,6 @@ urlpatterns = [
     path('rest/', include(router.urls)),
     # path('rest/add-photo', views.RESTAddPhoto, name='REST-add-photo'),
     path('rest/inference-correction', moreREST.RESTInferenceCorrection, name='REST-inference-correction'),
-    path('rest/add_photo', moreREST.RESTAddPhoto, name='REST-add-photo'),
-    path('rest/add_person', moreREST.RESTAddPerson, name='REST-add-person')
+    path('rest/add-photo', moreREST.RESTAddPhoto, name='REST-add-photo'),
+    path('rest/add-person', moreREST.RESTAddPerson, name='REST-add-person')
 ]
