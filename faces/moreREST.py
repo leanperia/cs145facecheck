@@ -84,3 +84,33 @@ def RESTInferenceCorrection(request):
     curl 'http://localhost:8000/rest/request-inference' -X POST
     -F 'sn=v93nagsd09132nas' -F 'key=Fs9gX@a8pzTl$20m' -F image=@sakura05.jpg
     """
+
+@csrf_exempt
+def RESTAddPerson(request):
+    data = {"success": False}
+    if request.method == "POST":
+        inbound = json.loads(request.body)
+        RegisteredPerson.objects.create(**inbound)
+        data["success"]=True
+        return HttpResponse(json.dumps(data))
+
+@csrf_exempt
+def RESTAddPhoto(request):
+    if request.method == "POST":
+        if request.FILES.get('image'): # if there is an image
+            print(request.FILES['image'])
+            image = Image.open(request.FILES['image'])
+            blob = BytesIO()
+            image.save(blob, image.format)
+            # file = request.FILES.get('image')
+            p = RegisteredPerson.objects.filter(first_name=request.POST.get('first_name')).first()
+            filename = str(p.id) + "_" + str(p.samplephoto_set.count() + 1) + "." +image.format
+            data["image"] = filename
+            s = SamplePhoto.objects.create(person=p)
+            s.photo.save(filename, File(blob), save=False)
+            p.samplephoto_set.add(s)
+            p.numphotos = p.samplephoto_set.count()
+            p.save()
+            s.save()
+            data["success"] = True
+        return HttpResponse(json.dumps(data))
