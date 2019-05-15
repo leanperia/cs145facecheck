@@ -10,21 +10,26 @@ from sklearn.neighbors import KNeighborsClassifier
 from urllib.request import urlopen
 
 from django.http import HttpResponse, Http404, HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, ListView, DetailView, CreateView, FormView
 from django.core import files
 from django.utils import timezone
 from django.core.cache import cache
+from django.db.models import F
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ViewSet, GenericViewSet
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import BasicAuthentication
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import mixins
+from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer, HTMLFormRenderer
 
 from .models import RegisteredPerson, SamplePhoto, EndAgent, InferenceRequest, MLModelVersion
-from .serializers import RegisteredPersonSerializer, SampePhotoSerializer, InferenceRequestSerializer
+from .serializers import RegisteredPersonSerializer, SamplePhotoSerializer, InferenceRequestSerializer, EndAgentSerializer
 from .forms import RawImageUploadForm, RetrainModelForm
 from facecheck.settings import MEDIA_ROOT, BASE_DIR, MEDIA_URL #, KNN_CLASSIFIER, BACKBONE_CNN, IMG_TRANSFORM, PNET, RNET, ONET
 from facedetect.topleveltools import detect_and_recognize, generate_knn_model, generate_embedding
@@ -125,7 +130,7 @@ class AddSamplePhoto(LoginRequiredMixin, CreateView):
         form.instance.embedding = embedding.tolist()[0]
 
         self.object = form.save()
-        this_person.numphotos += 1
+        this_person.numphotos = F('numphotos') + 1
         this_person.save()
         return HttpResponseRedirect(self.get_success_url())
 
@@ -247,7 +252,7 @@ def RunInference(request):
         )
         blob = BytesIO()
         img.save(blob, 'JPEG')
-        instance.inference.save('newinference.jpg', File(blob), save=False)
+        instance.inference.save('newinference.jpg',files.File(blob), save=False)
         instance.save()
         return HttpResponseRedirect(reverse('retry_inference', args=(0,)))
 
@@ -272,9 +277,9 @@ def RunInference(request):
     if extra_faces: instance.too_many_faces = True
     instance.save()
 
-    webagent.inf_count += 1
+    webagent.inf_count = F('inf_count') + 1
     webagent.save()
-    mv.inf_count += 1
+    mv.inf_count = F('inf_count') + 1
     mv.save()
 
     return HttpResponseRedirect(reverse('view_inference', args=(instance.id,)))
@@ -292,33 +297,33 @@ def EditInference(request, pk):
     print('the POST dict contains ', values)
     if "1" in values:
         if instance.false_positive==True:
-            agent.fp_count -= 1
-            mv.fp_count -= 1
+            agent.fp_count = F('fp_count') - 1
+            mv.fp_count = F('fp_count') - 1
             instance.false_positive = False
     elif "2" in values:
         if instance.false_positive==False:
-            agent.fp_count += 1
-            mv.fp_count += 1
+            agent.fp_count = F('fp_count') + 1
+            mv.fp_count = F('fp_count') + 1
             instance.false_positive = True
     elif "3" in values:
         if instance.false_negative==True:
-            agent.fn_count -= 1
-            mv.fn_count -= 1
+            agent.fn_count = F('fn_count') - 1
+            mv.fn_count = F('fn_count') - 1
             instance.false_negative = False
     elif "4" in values:
         if instance.false_negative==False:
-            agent.fn_count += 1
-            mv.fn_count += 1
+            agent.fn_count = F('fn_count') + 1
+            mv.fn_count = F('fn_count') + 1
             instance.false_negative = True
     elif "5" in values:
         if instance.incorrect_identification==False:
-            agent.ii_count += 1
-            mv.ii_count += 1
+            agent.ii_count = F('ii_count') +1
+            mv.ii_count = F('ii_count') +1
             instance.incorrect_identification = True
     elif "6" in values:
         if instance.incorrect_identification==True:
-            agent.ii_count -= 1
-            mv.ii_count -= 1
+            agent.ii_count = F('ii_count') -1
+            mv.ii_count = F('ii_count') -1
             instance.incorrect_identification = False
     instance.save()
     agent.save()
@@ -480,8 +485,12 @@ def RESTRunInference(request):
         )
         blob = BytesIO()
         img.save(blob, 'JPEG')
-        instance.inference.save('newinference.jpg', File(blob), save=False)
+        instance.inference.save('newinference.jpg',files.File(blob), save=False)
         instance.save()
+        output['decision'] = 'reject'
+        output['name'] = "No face detected"
+        output['idnumber'] = 'n/a'
+        output['inference_pk'] = f"{instance.id}"
         return HttpResponse(json.dumps(output))
 
     if distance > mv.threshold:
@@ -505,9 +514,9 @@ def RESTRunInference(request):
     if extra_faces: instance.too_many_faces = True
     instance.save()
 
-    agent.inf_count += 1
+    agent.inf_count = F('inf_count') + 1
     agent.save()
-    mv.inf_count += 1
+    mv.inf_count = F('inf_count') + 1
     mv.save()
 
     output['success'] = True
@@ -515,6 +524,7 @@ def RESTRunInference(request):
         output['decision'] = "reject"
         output['name'] = "Unknown"
         output['idnumber'] = "n/a"
+        output['inference_pk'] = f"{instance.id}"
     else:
         output['decision'] = "accept"
         output['name'] = f"{instance.person.first_name} {instance.person.last_name}"
@@ -533,33 +543,104 @@ def RESTRunInference(request):
     """
 
 @csrf_exempt
-def InferenceCorrection(request):
-    output = {'success': False}
+def RESTInferenceCorrection(request):
+    output = {'success':False, 'authenticated': False}
+    try:
+        agent = EndAgent.objects.get(serial_number=request.POST.get('sn', None))
+    except ObjectDoesNotExist:
+        return HttpResponse(json.dumps(output))
+    if request.POST.get('key', None) != agent.secret_key:
+        return HttpResponse(json.dumps(output))
+    else:
+        output['authenticated'] = True
 
-    return HttpResponse(json.dumps(output))
+    i = InferenceRequest.objects.get(pk=request.POST.get('inference_pk', None))
+    correction = request.POST.get('correction', None)
+    agent = i.endagent
+    model = MLModelVersion.objects.filter(is_in_use=True)[0]
 
-@csrf_exempt
-def RESTAddPhoto(request):
-    output = {'success': False}
 
-    return HttpResponse(json.dumps(output))
+    if correction == "FN":
+        i.false_negative = True
+        model.fp_count = F('fp_count') + 1
+        agent.fp_count = F('fp_count') + 1
+    elif correction == "FP":
+        i.false_positive = True
+        model.fn_count = F('fn_count') + 1
+        agent.fn_count = F('fn_count') + 1
+    elif correction == "II":
+        i.incorrect_identification = True
+        model.ii_count = F('ii_count') + 1
+        agent.ii_count = F('ii_count') + 1
+    i.save()
+    agent.save()
+    model.save()
+
+    output['success'] = True
+
+    json_out = json.dumps(output)
+    return HttpResponse(json_out)
+    """
+    This is the format of the curl request:
+    curl 'http://localhost:8000/rest/request-inference' -X POST
+    -F 'sn=v93nagsd09132nas' -F 'key=Fs9gX@a8pzTl$20m' -F image=@sakura05.jpg
+    """
+
+
 
 class RegisteredPersonViewSet(ModelViewSet):
     queryset = RegisteredPerson.objects.all()
     serializer_class = RegisteredPersonSerializer
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (BasicAuthentication,)
+    authentication_classes = (TokenAuthentication,SessionAuthentication)
 
-"""
-class SamplePhotoViewSet(ModelViewSet):
-    queryset = SamplePhoto.objects.all()
-    serializer_class = SamplePhoto
+
+class SamplePhotoViewSet(ViewSet):
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (BasicAuthentication,)
+    authentication_classes = (TokenAuthentication,SessionAuthentication,)
+    renderer_classes = (BrowsableAPIRenderer,JSONRenderer)
+    parser_classes = (FormParser, MultiPartParser,)
+    serializer_class = SamplePhotoSerializer
+    queryset = SamplePhoto.objects.all()
 
-class InferenceRequestViewSet(ModelViewSet):
+    def list(self, request):
+        queryset = SamplePhoto.objects.all()
+        serializer = SamplePhotoSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        queryset = SamplePhoto.objects.all()
+        sampphoto = get_object_or_404(queryset, pk=pk)
+        serializer = SamplePhotoSerializer(sampphoto)
+        return Response(serializer.data)
+
+    def create(self, request):
+        # usage is: curl -XPOST localhost:8000/rest/sample_photos/ -F person_pk=2
+        # -F image=@sakura01.jpg -H 'Accept: application/json'
+        serializer = SamplePhotoSerializer()
+        result = {"success": False}
+
+        if request.FILES.get('image'):
+            image = Image.open(request.data.get('image'))
+            blob = BytesIO()
+            image.save(blob, image.format)
+            p = RegisteredPerson.objects.get(pk=request.data.get('person_pk'))
+            s = SamplePhoto.objects.create(person=p)
+            s.photo.save('temporaryfilename.jpg',files.File(blob), save=False)
+            p.numphotos = F('numphotos') + 1
+            p.save()
+            s.save()
+            result['success'] = True
+        return Response(result)
+
+class InferenceRequestViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
     queryset =  InferenceRequest.objects.all()
     serializer_class = InferenceRequestSerializer
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (BasicAuthentication,)
-"""
+    authentication_classes = (TokenAuthentication,SessionAuthentication)
+
+class EndAgentViewSet(ModelViewSet):
+    queryset = EndAgent.objects.all()
+    serializer_class = EndAgentSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (TokenAuthentication,SessionAuthentication)

@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'storages',
     'rest_framework',
+    'rest_framework.authtoken',
     'health_check',
     'health_check.db',
     'health_check.cache',
@@ -182,7 +183,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
-
+APPEND_SLASH=False
 
 STATICFILES_DIRS = [os.path.join(BASE_DIR,'static')]
 
