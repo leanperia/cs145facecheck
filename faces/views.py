@@ -591,13 +591,13 @@ def RESTInferenceCorrection(request):
 class RegisteredPersonViewSet(ModelViewSet):
     queryset = RegisteredPerson.objects.all()
     serializer_class = RegisteredPersonSerializer
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (TokenAuthentication,SessionAuthentication)
+    #permission_classes = (IsAuthenticated,)
+    #authentication_classes = (TokenAuthentication,SessionAuthentication)
 
 
 class SamplePhotoViewSet(ViewSet):
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (TokenAuthentication,SessionAuthentication,)
+    #permission_classes = (IsAuthenticated,)
+    #authentication_classes = (TokenAuthentication,SessionAuthentication,)
     renderer_classes = (BrowsableAPIRenderer,JSONRenderer)
     parser_classes = (FormParser, MultiPartParser,)
     serializer_class = SamplePhotoSerializer
@@ -614,6 +614,15 @@ class SamplePhotoViewSet(ViewSet):
         serializer = SamplePhotoSerializer(sampphoto)
         return Response(serializer.data)
 
+    def delete(self, request, pk=None):
+        result = {"success": False}
+        instance = SamplePhoto.objects.get(pk=pk)
+        if not instance:
+            return Response(result)
+        else:
+            instance.delete()
+            return Response({"success": True})
+
     def create(self, request):
         # usage is: curl -XPOST localhost:8000/rest/sample_photos/ -F person_pk=2
         # -F image=@sakura01.jpg -H 'Accept: application/json'
@@ -621,11 +630,45 @@ class SamplePhotoViewSet(ViewSet):
         result = {"success": False}
 
         if request.FILES.get('image'):
-            image = Image.open(request.data.get('image'))
+            img_transform = cache.get("TRANSF")
+            backbone_cnn = cache.get('CNN')
+            pnet = cache.get('PNET')
+            rnet = cache.get('RNET')
+            onet = cache.get('ONET')
+            if backbone_cnn == None:
+                backbone_cnn = IR_50([112,112])
+                if LOCAL_BACKBONE:
+                    print("loading backbone_cnn.pth locally")
+                    backbone_cnn.load_state_dict(torch.load(os.path.join(MEDIA_ROOT,'models/backbone_cnn.pth')))
+                else:
+                    print('downloading pretrained InceptionResnet from S3 bucket')
+                    newf = urlopen('https://s3-ap-southeast-1.amazonaws.com/cs145facecheck/media/models/backbone_cnn.pth')
+                    backbone_cnn.load_state_dict(torch.load(BytesIO(newf.read()), map_location='cpu'))
+                backbone_cnn.eval()
+                print('CNN loaded successfully')
+                cache.set('CNN', backbone_cnn)
+            if pnet == None:
+                pnet = PNet(MEDIA_URL+'models/')
+                pnet.eval()
+                cache.set('PNET', pnet)
+            if rnet == None:
+                rnet = RNet(MEDIA_URL+'models/')
+                rnet.eval()
+                cache.set('RNET', rnet)
+            if onet == None:
+                onet = ONet(MEDIA_URL+'models/')
+                onet.eval()
+                cache.set('ONET', onet)
+            if img_transform == None:
+                img_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std = [0.5, 0.5, 0.5])])
+                cache.set('TRANSF', img_transform)
+
+            uploaded_img = Image.open(request.data.get('image'))
+            embedding = generate_embedding(uploaded_img, backbone_cnn, img_transform, pnet, rnet, onet)
             blob = BytesIO()
-            image.save(blob, image.format)
+            uploaded_img.save(blob, uploaded_img.format)
             p = RegisteredPerson.objects.get(pk=request.data.get('person_pk'))
-            s = SamplePhoto.objects.create(person=p)
+            s = SamplePhoto.objects.create(person=p, embedding=embedding.tolist()[0])
             s.photo.save('temporaryfilename.jpg',files.File(blob), save=False)
             p.numphotos = F('numphotos') + 1
             p.save()
@@ -636,11 +679,11 @@ class SamplePhotoViewSet(ViewSet):
 class InferenceRequestViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
     queryset =  InferenceRequest.objects.all()
     serializer_class = InferenceRequestSerializer
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (TokenAuthentication,SessionAuthentication)
+    #permission_classes = (IsAuthenticated,)
+    #authentication_classes = (TokenAuthentication,SessionAuthentication)
 
 class EndAgentViewSet(ModelViewSet):
     queryset = EndAgent.objects.all()
     serializer_class = EndAgentSerializer
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (TokenAuthentication,SessionAuthentication)
+    #permission_classes = (IsAuthenticated,)
+    #authentication_classes = (TokenAuthentication,SessionAuthentication)
