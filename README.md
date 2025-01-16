@@ -1,9 +1,12 @@
 Web server for FaceCheck IoT project
 
 by Team kawAI
+
 Winner - 1st Place, Nokia IoT Cup on May 17, 2019 at UP Alumni Engineers Centennial Hall
 
 (NOTE: The final version deployed in AWS is in the amazon-complete branch)
+
+-----
 
 The Facial Recognition engine of FaceCheck is built taking from the following repo:
 https://github.com/ZhaoJ9014/face.evoLVe.PyTorch
